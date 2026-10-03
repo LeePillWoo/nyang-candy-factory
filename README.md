@@ -30,7 +30,7 @@ python tools/build_single.py penguin.html    # → dist/penguin.html
 
 ### GitHub Pages 배포 시 버전 올리기
 
-GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `candy.html`·`penguin.html` 안의 `?v=6` 을 **모두** 다음 숫자(`?v=7`)로 바꿔 주세요. (CSS, 시작 스크립트, importmap 안의 모듈들. 새 모듈을 만들면 importmap 에도 추가)
+GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `candy.html`·`penguin.html` 안의 `?v=7` 을 **모두** 다음 숫자(`?v=8`)로 바꿔 주세요. (CSS, 시작 스크립트, importmap 안의 모듈들. 새 모듈을 만들면 importmap 에도 추가)
 그래야 폰에서 예전 파일과 새 파일이 섞이지 않고 한꺼번에 새로 받아집니다.
 
 기기에서 화면이 잘리거나 너무 크게 보이면 주소 끝에 `?debug` 를 붙여 열어 보세요(예: `.../nyang-candy-factory/candy.html?debug`). 화면 왼쪽 아래에 브라우저가 알려 주는 화면 크기와 실제로 쓴 크기가 표시됩니다.
@@ -99,9 +99,10 @@ src/
   penguin/draw.js     펭귄 게임 그리기 (하늘, 원근 얼음길, 펭귄, 구멍, 물고기, 깃발, 기지)
   penguin/game.js     펭귄 게임 흐름, 원근 투영, 입력 처리
 assets/
-  raw/cat_sheet.png   원본 고양이 시트 (8×8, 투명 배경)
-  sprites/cat.png     sprite_pack.py 로 다시 포장한 균일 그리드 시트
-  sprites/cat.json    그 메타데이터
+  raw/cat_sheet.png   원본 고양이 시트 (6×6 칸, 흰 배경)
+  raw/tiger_sheet.png 원본 호랑이 시트 (6×6 칸, 흰 배경)
+  sprites/cat.png     sprite_pack.py 로 배경을 지우고 다시 포장한 시트 (+ cat.json 메타)
+  sprites/tiger.png   〃 (+ tiger.json)
 tools/
   sprite_pack.py      스프라이트 시트 자동 정리 도구
   build_single.py     게임 하나를 HTML 파일 하나로 묶기
@@ -112,14 +113,17 @@ tools/
 - **SPRITES** — 시트 메타 `{ src, frameW, frameH, anims: { 이름: { row, frames, fps } } }`.
 - **CHARACTERS** — `kind: 'sprite'` 는 SPRITES 시트를 쓰고, `anims[이름] = { anim, seq?, fps?, scale? }` 로 프레임 순서를 재정의할 수 있습니다. `kind: 'shape'` 는 `draw(ctx, pose)` 로 Canvas에 직접 그립니다.
 - **Actor** — 두 종류 캐릭터를 같은 방식으로 다룹니다. 게임 로직은 `idle` / `walk`(있으면 `happy`, `sad`)만 호출하므로 캐릭터를 바꿔도 게임 코드는 그대로입니다. 없는 애니 이름은 `idle` 로 대체됩니다.
-- 고양이 냥이 = 직원(실제 스프라이트), 손님 6종(곰·토끼·돼지·여우·강아지·판다) = 코드 드로잉.
+- 고양이 냥이 = 직원(스프라이트).
+- 손님: 호랑이 호돌이(스프라이트)는 한 판에 꼭 한 번(`FEATURED_CUSTOMERS`), 나머지 자리는 코드로 그린 곰·토끼·돼지·여우·강아지·판다(`CUSTOMER_KEYS`) 중 무작위.
 
 ## 🐾 새 캐릭터 스프라이트로 교체하기
 
 ### 1. 원본 시트 준비
 
-- **투명 배경 PNG**, 한 행 = 한 애니메이션, 프레임은 왼쪽→오른쪽.
-- 프레임 크기나 간격이 들쭉날쭉해도 괜찮습니다. 도구가 알아서 찾아 정렬합니다.
+- 한 행 = 한 애니메이션, 프레임은 왼쪽→오른쪽.
+- **투명 배경**이면 그대로, **흰 배경**이면 `--bg white` 를 붙이면 됩니다(가장자리에서 이어진 흰 배경과 옅은 그림자만 지우고, 캐릭터 안쪽의 흰 털은 남김).
+- 칸이 **일정한 격자**(예: 6×6)면 `--grid 6x6` 을 붙이세요. 하트·물방울·느낌표 같은 효과가 캐릭터 옆에 떨어져 있어도 한 프레임으로 잘리고, 그림 위치를 그대로 유지해 움직일 때 흔들리지 않습니다. 이웃 칸 그림이 경계를 넘어 들어온 작은 조각은 자동으로 지웁니다.
+- 격자가 아니고 프레임 크기나 간격이 들쭉날쭉해도 괜찮습니다. `--grid` 없이 쓰면 도구가 알아서 찾아 정렬합니다.
 - 캐릭터가 **오른쪽을 보는** 그림이면 가장 편합니다(왼쪽이면 2단계의 `faces` 를 `'left'` 로).
 - `assets/raw/` 에 넣습니다. 예: `assets/raw/dog_sheet.png`
 
@@ -158,6 +162,17 @@ python tools/sprite_pack.py assets/raw/dog_sheet.png -o assets/sprites/dog \
 - 알파 투영으로 행 띠 → 행마다 프레임을 찾고,
 - 모든 프레임을 같은 크기 셀에 **하단 중앙 정렬**(발끝이 셀 바닥에 닿게)로 다시 배치하므로 걷는 동안 캐릭터가 떨리지 않습니다.
 - 결과: `assets/sprites/dog.png` + `assets/sprites/dog.json`
+
+지금 고양이·호랑이는 이렇게 만들었습니다 (흰 배경 6×6 시트):
+
+```bash
+python tools/sprite_pack.py assets/raw/cat_sheet.png -o assets/sprites/cat --bg white --grid 6x6 \
+    --anim walk=0 --anim groom=1 --anim happy=2 --anim surprise=3 --fps walk=10 --scale 0.85
+python tools/sprite_pack.py assets/raw/tiger_sheet.png -o assets/sprites/tiger --bg white --grid 6x6 \
+    --anim walk=0 --anim giggle=1 --anim happy=2 --fps walk=10 --scale 0.85
+```
+
+그림을 바꾼 뒤에는 `src/sprites.js` 의 `SPRITE_VERSION` 을 1 올려 주세요(폰에 예전 그림이 캐시로 남지 않게).
 - 행 이름을 정하기 전에 전체를 보고 싶으면 `--all` (row0, row1… 이름으로 내보냄).
 
 ### 4. SPRITES 에 등록 (`src/sprites.js`)
@@ -209,7 +224,12 @@ dogStaff: {
 this.cat = new Actor('dogStaff', CAT_HOME, FLOOR, { facing: 'right', speed: 300 });
 ```
 
-손님으로 쓰려면 `CUSTOMER_KEYS` 배열에 키를 추가하면 됩니다. 손님은 등장할 때 왼쪽을 보며 걸어 들어오고, `faces` 값에 따라 자동으로 좌우 반전됩니다.
+손님으로 쓰려면 `src/characters.js` 에서:
+
+- 스프라이트 동물은 `FEATURED_CUSTOMERS` 에 키를 추가 → 한 판(손님 5명)에 각자 한 번씩 꼭 나옵니다. 남는 자리는 코드로 그린 손님이 무작위로 채웁니다.
+- 코드로 그린 동물은 `CUSTOMER_KEYS` 에 추가 → 무작위로 나옵니다.
+
+손님 애니메이션 이름은 `idle`(앉아 있기), `walk`, `happy`(정답), `eat`(뺄셈에서 사탕 받아먹기)를 씁니다. 손님은 등장할 때 왼쪽을 보며 걸어 들어오고, `faces` 값에 따라 자동으로 좌우 반전됩니다. `scale` 은 코드 손님들(키 약 165px)과 비슷해지게 맞추세요(호랑이는 1.08).
 
 ### 코드로 그린 캐릭터(shape)를 스프라이트로, 또는 그 반대로
 
