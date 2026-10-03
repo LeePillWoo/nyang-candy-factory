@@ -23,6 +23,11 @@ python tools/build_single.py        # → dist/nyang-candy-factory.html (JS·CSS
 
 만들어진 HTML 하나만 아무 정적 호스팅(GitHub Pages, Netlify 등)에 올리거나, 파일로 바로 열어도 동작합니다.
 
+### GitHub Pages 배포 시 버전 올리기
+
+GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `index.html` 안의 `?v=3` 을 **모두** 다음 숫자(`?v=4`)로 바꿔 주세요. (`style.css`, `src/game.js`, importmap 안의 모듈들)
+그래야 폰에서 예전 파일과 새 파일이 섞이지 않고 한꺼번에 새로 받아집니다.
+
 ## 게임 방법
 
 | 모드 | 그림으로 세기 | 아이가 하는 일 | 질문 |

@@ -2,14 +2,14 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#ffe3ea">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <title>냥냥 사탕 공장</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
   <div id="stage">
@@ -69,6 +69,18 @@
     </section>
   </div>
 
-  <script type="module" src="src/game.js"></script>
+  <!-- 배포할 때 v 값을 올리면 모든 파일이 한꺼번에 새로 받아진다 (캐시에서 옛 파일과 섞이지 않게) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./src/sprites.js": "./src/sprites.js?v=3",
+      "./src/characters.js": "./src/characters.js?v=3",
+      "./src/actor.js": "./src/actor.js?v=3",
+      "./src/audio.js": "./src/audio.js?v=3",
+      "./src/problems.js": "./src/problems.js?v=3"
+    }
+  }
+  </script>
+  <script type="module" src="src/game.js?v=3"></script>
 </body>
 </html>

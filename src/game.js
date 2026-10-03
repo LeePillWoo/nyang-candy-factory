@@ -102,6 +102,11 @@ class Game {
     window.addEventListener('resize', refit);
     window.addEventListener('orientationchange', () => setTimeout(refit, 250));
     if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
+    // 일부 모바일 브라우저는 처음 크기를 늦게 알려 준다
+    window.addEventListener('load', refit);
+    window.addEventListener('pageshow', refit);
+    setTimeout(refit, 300);
+    setTimeout(refit, 1200);
     this.renderCoins();
     this.showMenu();
 
@@ -137,8 +142,10 @@ class Game {
     const cs = getComputedStyle(document.documentElement);
     const inset = (n) => parseFloat(cs.getPropertyValue(n)) || 0;
     const l = inset('--sal'), r = inset('--sar'), t = inset('--sat'), b = inset('--sab');
-    const vw = Math.max(1, window.innerWidth - l - r);
-    const vh = Math.max(1, window.innerHeight - t - b);
+    // 레이아웃 뷰포트 크기 (손가락 확대와 무관), 없으면 innerWidth
+    const de = document.documentElement;
+    const vw = Math.max(1, (de.clientWidth || window.innerWidth) - l - r);
+    const vh = Math.max(1, (de.clientHeight || window.innerHeight) - t - b);
 
     const portrait = vh > vw;
     const height = portrait
@@ -162,6 +169,7 @@ class Game {
     this.canvas.height = Math.round(H * k);
     this.ctx.setTransform(k, 0, 0, k, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
+    this.stage.classList.add('ready');
   }
 
   // 방향이 바뀌면 진행 중인 장면을 새 배치로 옮긴다

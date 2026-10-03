@@ -57,8 +57,9 @@ def main():
     html = read('index.html')
     head = re.search(r'<head>(.*?)</head>', html, re.S).group(1)
     body = re.search(r'<body>(.*?)</body>', html, re.S).group(1)
-    head = re.sub(r'\s*<link rel="stylesheet" href="style.css">', '', head)
-    body = re.sub(r'\s*<script type="module" src="src/game.js"></script>', '', body)
+    head = re.sub(r'\s*<link rel="stylesheet" href="style.css[^"]*">', '', head)
+    body = re.sub(r'\s*<!--[^>]*-->\s*<script type="importmap">.*?</script>', '', body, flags=re.S)
+    body = re.sub(r'\s*<script type="module" src="src/game.js[^"]*"></script>', '', body)
     if args.fragment:  # 게시 쪽 뼈대가 charset/viewport 를 넣어 준다
         head = re.sub(r'\s*<meta (charset|name="viewport")[^>]*>', '', head)
 
