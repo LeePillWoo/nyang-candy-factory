@@ -16,6 +16,9 @@ const SPEED = 6;              // 달리는 속도 (단위/초)
 const THINK = { 1: 7, 2: 10, 3: 13, 4: 17 };  // 문제를 보고 깃발에 닿기까지 시간(초)
 const HOLE_RATE = { 1: 0.35, 2: 0.3, 3: 0.25, 4: 0.2 };  // 생기는 물체 중 얼음 구멍 비율 (어려울수록 줄여 계산에 집중)
 const JUMP_TIME = 0.75;
+const SLOW = 0.3;             // 깃발 통과 슬로모션 배속
+const SLOW_NEAR = 3;          // 깃발이 이만큼(깊이) 가까워지면 느려지기 시작
+const SLOW_HOLD = 0.6;        // 통과 뒤 슬로모션을 유지하는 시간(실제 초)
 const OP_WORD = { add: '더하기', sub: '빼기', mul: '곱하기', div: '나누기', ten: '더하기' };
 
 const $ = (s) => document.querySelector(s);
@@ -98,6 +101,8 @@ class PenguinGame {
     this.phase = 'idle';
     this.phaseT = 0;
     this.gateIndex = 0;
+    this.timeScale = 1;
+    this.slowHold = 0;
     this.results = [];
     this.missed = [];
     this.fish = 0;
@@ -291,6 +296,7 @@ class PenguinGame {
     const p = g.p;
     const right = g.choices.indexOf(p.answer);
     g.picked = i;
+    this.slowHold = SLOW_HOLD;
     g.right = right;
     const chips = document.querySelectorAll('#quiz .q-choices span');
     const msg = $('#quiz .q-msg');
@@ -355,6 +361,14 @@ class PenguinGame {
 
   // ── 루프 ────────────────────────────────────────────
   update(dt) {
+    // 깃발 통과 슬로모션: 깃발이 코앞에 오면 느려지고, 지나간 뒤 잠깐 유지했다가 원래 속도로
+    const gate = this.state === 'run' && this.objects.find((o) => o.kind === 'gate' && o.picked === null);
+    const near = gate && gate.z - ZP < SLOW_NEAR && this.fallT <= 0;
+    if (this.slowHold > 0) this.slowHold -= dt;
+    const target = near || this.slowHold > 0 ? SLOW : 1;
+    this.timeScale += (target - this.timeScale) * Math.min(1, dt * (target < 1 ? 8 : 3));
+    dt *= this.timeScale;
+
     this.time += dt;
     for (const p of this.particles) { p.age += dt; p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt; }
     this.particles = this.particles.filter((p) => p.age < p.life);
@@ -514,6 +528,13 @@ class PenguinGame {
   draw() {
     const ctx = this.ctx;
     const t = this.time;
+    // 슬로모션일 때 펭귄 쪽으로 살짝 당겨 보기
+    const zoom = 1 + (1 - this.timeScale) / (1 - SLOW) * 0.08;
+    ctx.save();
+    if (zoom > 1.001) {
+      const zx = P.cx + this.px * P.fx / ZP, zy = P.playerY - 60;
+      ctx.translate(zx, zy); ctx.scale(zoom, zoom); ctx.translate(-zx, -zy);
+    }
     D.drawSky(ctx, W, P.horizon, t);
     D.drawGround(ctx, W, H, P.horizon, proj, this.dist, FAR);
 
@@ -545,6 +566,15 @@ class PenguinGame {
       }
     }
     for (const p of this.particles) D.drawParticle(ctx, p);
+    ctx.restore();
+    // 슬로모션 테두리 그늘
+    const k = (1 - this.timeScale) / (1 - SLOW);
+    if (k > 0.02) {
+      const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+      g.addColorStop(0, 'rgba(20, 60, 110, 0)');
+      g.addColorStop(1, `rgba(20, 60, 110, ${0.28 * k})`);
+      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
+    }
   }
 
   drawPenguin(ctx, t) {
