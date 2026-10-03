@@ -1,0 +1,90 @@
+/* 펭귄 남극탐험 — style.css(공용 스티커 UI) 위에 얼음 색만 덧입힌다 */
+body.penguin { background: #d8f1ff; }
+
+body.penguin .screen { background: rgba(216, 241, 255, .35); }
+body.penguin .panel { background: #f4fbff; }
+body.penguin .title { color: #5bb8f0; }
+body.penguin .title span { color: #ffffff; }
+body.penguin #menu .panel { margin-left: 0; }
+body.penguin .diff[aria-checked="true"] { background: #c9ecff; }
+.howto { font-size: 22px; margin: 0 0 16px; color: #3f6c8a; }
+
+#fish { font-size: 28px; padding: 0 16px 0 10px; margin-left: auto; }
+#fish.bump { animation: bump .3s; }
+body.penguin #coins { margin-left: 0; }
+
+/* 문제판 */
+#quiz {
+  position: absolute;
+  left: 0; right: 0; top: 96px;
+  margin: 0 auto;
+  width: 640px;
+  background: #fff;
+  border: 5px solid var(--ink);
+  border-radius: 30px;
+  box-shadow: 0 7px 0 var(--ink);
+  padding: 8px 20px 12px;
+  text-align: center;
+  pointer-events: none;
+  animation: popin .35s cubic-bezier(.3, 1.6, .5, 1);
+}
+#quiz p { margin: 0; }
+.q-expr { font-size: 54px; line-height: 1.15; }
+.q-expr.long { font-size: 40px; }
+.q-expr .q { color: #ff5c8a; display: inline-block; animation: wiggle 1.4s infinite; }
+.q-expr .ans { color: #23a86b; display: inline-block; animation: bump .5s; }
+.q-choices { display: flex; justify-content: space-between; gap: 14px; margin-top: 8px; }
+.q-choices span {
+  flex: 1;
+  border: 4px solid var(--ink);
+  border-radius: 18px;
+  font-size: 40px;
+  line-height: 1.25;
+  transition: transform .15s;
+  white-space: nowrap;
+}
+.q-choices .lane0 { background: #ff8fab; }
+.q-choices .lane1 { background: #ffd65c; }
+.q-choices .lane2 { background: #7cc8f8; }
+.q-choices .here { transform: translateY(-4px) scale(1.06); box-shadow: 0 0 0 5px #fff, 0 0 0 9px var(--ink); }
+.q-choices .right { background: #23a86b; color: #fff; }
+.q-choices .wrong { background: #e0d8d3; color: #a8968b; }
+.q-msg { font-size: 26px; margin-top: 8px !important; color: #3f6c8a; }
+
+/* 조작 버튼 */
+#pad {
+  position: absolute;
+  left: 24px; right: 24px; bottom: 22px;
+  display: flex; justify-content: space-between; align-items: flex-end;
+  pointer-events: none;
+}
+.pad {
+  pointer-events: auto;
+  width: 170px; height: 112px;
+  border: 5px solid var(--ink);
+  border-radius: 30px;
+  background: #fff;
+  box-shadow: 0 8px 0 var(--ink);
+  font-size: 56px;
+  color: var(--ink);
+  touch-action: none;
+}
+.pad.jump { width: 190px; font-size: 40px; background: #c9ecff; }
+.pad:active { transform: translateY(6px); box-shadow: 0 2px 0 var(--ink); }
+
+/* 결과 */
+.review { margin: 0 0 18px; font-size: 30px; }
+.review p { margin: 2px 0; }
+.review b { color: #23a86b; font-weight: normal; }
+.review-title { font-size: 22px; color: #8a6f66; }
+
+/* 세로 화면 */
+#stage.portrait #quiz { width: auto; left: 20px; right: 20px; top: 100px; }
+#stage.portrait .q-expr { font-size: 58px; }
+#stage.portrait .q-expr.long { font-size: 42px; }
+#stage.portrait .q-choices span { font-size: 44px; }
+#stage.portrait .pad { width: 190px; height: 120px; }
+#stage.portrait .pad.jump { width: 220px; }
+#stage.portrait #dots { gap: 8px; padding: 6px 12px; }
+#stage.portrait .dot { width: 32px; height: 32px; font-size: 20px; }
+#stage.portrait #fish { font-size: 24px; padding: 0 12px 0 8px; }

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#d8f1ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>펭귄 남극탐험</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=6">
+  <link rel="stylesheet" href="penguin.css?v=6">
+</head>
+<body class="penguin">
+  <div id="stage">
+    <canvas id="scene"></canvas>
+
+    <!-- 상단 HUD -->
+    <div id="hud">
+      <a id="btn-games" class="chip" href="./" aria-label="게임 고르기">🎮</a>
+      <button id="btn-home" class="chip" aria-label="처음으로" hidden>🏠</button>
+      <button id="btn-sound" class="chip" aria-label="소리">🔊</button>
+      <div id="dots" hidden></div>
+      <div id="fish" class="chip"><span aria-hidden="true">🐟</span><b id="fish-count">0</b></div>
+      <div id="coins" class="chip coins"><span class="coin"></span><b id="coin-count">0</b></div>
+    </div>
+
+    <!-- 문제 + 세 갈래 보기 (왼쪽·가운데·오른쪽 길 순서) -->
+    <div id="quiz" hidden>
+      <p class="q-expr"></p>
+      <div class="q-choices"><span></span><span></span><span></span></div>
+      <p class="q-msg"></p>
+    </div>
+
+    <!-- 조작 버튼 -->
+    <div id="pad" hidden>
+      <button class="pad left" aria-label="왼쪽 길">◀</button>
+      <button class="pad jump" aria-label="점프">점프</button>
+      <button class="pad right" aria-label="오른쪽 길">▶</button>
+    </div>
+
+    <!-- 시작 화면 -->
+    <section id="menu" class="screen">
+      <div class="panel">
+        <h1 class="title"><span>펭귄</span> 남극탐험</h1>
+        <p class="sub">정답 깃발이 있는 길로 달려가요!</p>
+        <div class="diffs" role="radiogroup" aria-label="난이도">
+          <button class="diff" data-diff="1" aria-checked="true"><span class="boxes"><i></i><b></b><i></i></span><small>한 자리</small></button>
+          <button class="diff" data-diff="2" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i></span><small>두 자리·한 자리</small></button>
+          <button class="diff" data-diff="3" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i><i></i></span><small>두 자리·두 자리</small></button>
+          <button class="diff" data-diff="4" aria-checked="false"><span class="boxes"><i></i><i></i><i></i><b></b><i></i><i></i><i></i></span><small>세 자리·세 자리</small></button>
+        </div>
+        <p class="howto">◀ ▶ 로 길을 바꾸고, 얼음 구멍은 점프! 🐟 물고기는 보너스</p>
+        <div class="modes">
+          <button class="btn mode add" data-mode="add"><span class="sign">+</span><span>덧셈</span></button>
+          <button class="btn mode sub" data-mode="sub"><span class="sign">−</span><span>뺄셈</span></button>
+          <button class="btn mode mul" data-mode="mul"><span class="sign">×</span><span>곱셈</span></button>
+          <button class="btn mode div" data-mode="div"><span class="sign">÷</span><span>나눗셈</span></button>
+          <button class="btn mode ten" data-mode="ten"><span class="sign">10</span><span>10 만들기</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 결과 화면 -->
+    <section id="result" class="screen" hidden>
+      <div class="panel">
+        <h2 class="title small">기지 도착!</h2>
+        <div class="stars"></div>
+        <p class="earned"></p>
+        <div class="review"></div>
+        <div class="row">
+          <button class="btn go again">한 번 더!</button>
+          <button class="btn go home">처음으로</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 배포할 때 v 값을 올리면 모든 파일이 한꺼번에 새로 받아진다 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./src/audio.js": "./src/audio.js?v=6",
+      "./src/problems.js": "./src/problems.js?v=6",
+      "./src/viewport.js": "./src/viewport.js?v=6",
+      "./src/penguin/draw.js": "./src/penguin/draw.js?v=6"
+    }
+  }
+  </script>
+  <script type="module" src="src/penguin/game.js?v=6"></script>
+</body>
+</html>

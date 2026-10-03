@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#ffe3ea">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>냥냥 사탕 공장</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=6">
+</head>
+<body>
+  <div id="stage">
+    <canvas id="scene"></canvas>
+
+    <!-- 상단 HUD -->
+    <div id="hud">
+      <a id="btn-games" class="chip" href="./" aria-label="게임 고르기">🎮</a>
+      <button id="btn-home" class="chip" aria-label="처음으로" hidden>🏠</button>
+      <button id="btn-sound" class="chip" aria-label="소리">🔊</button>
+      <div id="dots" hidden></div>
+      <div id="coins" class="chip coins"><span class="coin"></span><b id="coin-count">0</b></div>
+    </div>
+
+    <!-- 손님 주문서 -->
+    <div id="order" hidden>
+      <p class="order-text"></p>
+      <p class="order-expr"></p>
+      <p class="order-q"></p>
+      <div class="order-progress"></div>
+    </div>
+
+    <!-- 아래쪽 안내 -->
+    <div id="tip" hidden></div>
+
+    <!-- 큰 수 풀이 보드 (난이도 2~4 오답 힌트) -->
+    <div id="work" hidden>
+      <p class="work-title">차근차근 풀어 볼까?</p>
+      <div class="work-body"></div>
+      <p class="work-note"></p>
+    </div>
+
+    <!-- 3지선다 -->
+    <div id="answers" hidden></div>
+
+    <!-- 시작 화면 -->
+    <section id="menu" class="screen">
+      <div class="panel">
+        <h1 class="title"><span>냥냥</span> 사탕 공장</h1>
+        <p class="sub">손님이 원하는 사탕을 담아 주세요!</p>
+        <!-- 난이도: 칸 모양으로 자릿수를 보여 줌 (글을 못 읽어도 고를 수 있게) -->
+        <div class="diffs" role="radiogroup" aria-label="난이도">
+          <button class="diff" data-diff="1" aria-checked="true"><span class="boxes"><i></i><b></b><i></i></span><small>한 자리</small></button>
+          <button class="diff" data-diff="2" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i></span><small>두 자리·한 자리</small></button>
+          <button class="diff" data-diff="3" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i><i></i></span><small>두 자리·두 자리</small></button>
+          <button class="diff" data-diff="4" aria-checked="false"><span class="boxes"><i></i><i></i><i></i><b></b><i></i><i></i><i></i></span><small>세 자리·세 자리</small></button>
+        </div>
+        <div class="levels" role="radiogroup" aria-label="푸는 방법">
+          <button class="pill" data-level="picture" aria-checked="true">🍬 그림으로 세기</button>
+          <button class="pill" data-level="number" aria-checked="false">🔢 숫자로 풀기</button>
+        </div>
+        <p class="big-note">큰 수는 숫자로 풀어요 · 틀리면 차근차근 풀이를 보여 줘요</p>
+        <div class="modes">
+          <button class="btn mode add" data-mode="add"><span class="sign">+</span><span>덧셈</span></button>
+          <button class="btn mode sub" data-mode="sub"><span class="sign">−</span><span>뺄셈</span></button>
+          <button class="btn mode mul" data-mode="mul"><span class="sign">×</span><span>곱셈</span></button>
+          <button class="btn mode div" data-mode="div"><span class="sign">÷</span><span>나눗셈</span></button>
+          <button class="btn mode ten" data-mode="ten"><span class="sign">10</span><span>10 만들기</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 결과 화면 -->
+    <section id="result" class="screen" hidden>
+      <div class="panel">
+        <h2 class="title small">오늘 영업 끝!</h2>
+        <div class="stars"></div>
+        <p class="earned"></p>
+        <div class="row">
+          <button class="btn go again">한 번 더!</button>
+          <button class="btn go home">처음으로</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 배포할 때 v 값을 올리면 모든 파일이 한꺼번에 새로 받아진다 (캐시에서 옛 파일과 섞이지 않게) -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./src/sprites.js": "./src/sprites.js?v=6",
+      "./src/characters.js": "./src/characters.js?v=6",
+      "./src/actor.js": "./src/actor.js?v=6",
+      "./src/audio.js": "./src/audio.js?v=6",
+      "./src/problems.js": "./src/problems.js?v=6",
+      "./src/work.js": "./src/work.js?v=6",
+      "./src/viewport.js": "./src/viewport.js?v=6"
+    }
+  }
+  </script>
+  <script type="module" src="src/game.js?v=6"></script>
+</body>
+</html>
