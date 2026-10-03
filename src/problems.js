@@ -84,6 +84,31 @@ const BIG = {
   },
 };
 
+// 2~4단계 그림 레벨(사탕 포장 놀이): 낱개·막대(10)·상자(100)가 계산대에 들어가는 크기로,
+// 받아올림·받아내림이 자주 나오게 고른다.
+export function pictureSupported(mode, diff) {
+  if (diff === 1) return true;
+  if (mode === 'add' || mode === 'sub') return true;
+  return diff === 2 && (mode === 'mul' || mode === 'div');
+}
+const often = (p) => Math.random() < p;
+const BIG_PIC = {
+  add: {
+    2: () => { for (;;) { const a = rnd(11, 89), b = rnd(2, 9); if (a + b <= 99 && (often(0.3) || a % 10 + b >= 10)) return [a, b]; } },
+    3: () => { for (;;) { const a = rnd(11, 79), b = rnd(11, 79); if (a + b <= 99 && (often(0.3) || a % 10 + b % 10 >= 10)) return [a, b]; } },
+    4: () => { for (;;) { const a = rnd(101, 499), b = rnd(101, 499); if (a + b <= 999 && (often(0.3) || a % 10 + b % 10 >= 10 || Math.floor(a / 10) % 10 + Math.floor(b / 10) % 10 >= 10)) return [a, b]; } },
+  },
+  sub: {
+    2: () => { for (;;) { const a = rnd(20, 99), b = rnd(2, 9); if (often(0.3) || a % 10 < b) return [a, b]; } },
+    3: () => { for (;;) { const a = rnd(30, 99), b = rnd(11, a - 10); if (often(0.3) || a % 10 < b % 10) return [a, b]; } },
+    4: () => { for (;;) { const a = rnd(200, 999), b = rnd(100, a - 100); if (often(0.3) || a % 10 < b % 10 || Math.floor(a / 10) % 10 < Math.floor(b / 10) % 10) return [a, b]; } },
+  },
+  // 23 × 4: 봉지마다 막대 ≤3, 낱개 ≤5 (봉지 4개가 계산대에 들어가게)
+  mul: { 2: () => [rnd(1, 3) * 10 + rnd(1, 5), rnd(2, 4)] },
+  // 72 ÷ 3: 봉지 2~3개, 몫은 두 자리
+  div: { 2: () => { const b = rnd(2, 3); return [b * rnd(11, Math.floor(99 / b)), b]; } },
+};
+
 function solve(mode, a, b) {
   switch (mode) {
     case 'add': return a + b;
@@ -155,6 +180,14 @@ function shuffle(arr) {
 
 // ── 화면 문구 ──────────────────────────────────────────
 export function orderText(p) {
+  if (p.diff > 1 && p.level === 'picture') {
+    switch (p.mode) {
+      case 'add': return `사탕 ${p.a}개랑 ${p.b}개를 한 쟁반에 모아 주세요!`;
+      case 'sub': return `사탕 ${p.a}개 중에 ${p.b}개 주세요!`;
+      case 'mul': return `사탕 ${p.a}개씩 ${p.b}봉지 주세요!`;
+      case 'div': return `사탕 ${p.a}개를 ${p.b}봉지에 똑같이 나눠 주세요!`;
+    }
+  }
   if (p.diff > 1) return '큰 주문이에요! 계산해 주세요!';
   if (p.level === 'number') return '계산해 주세요!';
   switch (p.mode) {
@@ -167,11 +200,12 @@ export function orderText(p) {
 }
 
 export function questionText(p) {
+  const big = p.diff > 1 && p.level !== 'picture';   // 숫자로만 푸는 큰 수
   switch (p.mode) {
-    case 'add': return p.diff > 1 ? '모두 얼마일까?' : '모두 몇 개일까?';
-    case 'sub': return p.diff > 1 ? '남은 수는 얼마일까?' : '남은 사탕은 몇 개일까?';
-    case 'mul': return p.diff > 1 ? '모두 얼마일까?' : '모두 몇 개일까?';
-    case 'div': return p.diff > 1 ? '몫은 얼마일까?' : '한 봉지에 몇 개일까?';
+    case 'add': return big ? '모두 얼마일까?' : '모두 몇 개일까?';
+    case 'sub': return big ? '남은 수는 얼마일까?' : '남은 사탕은 몇 개일까?';
+    case 'mul': return big ? '모두 얼마일까?' : '모두 몇 개일까?';
+    case 'div': return big ? '몫은 얼마일까?' : '한 봉지에 몇 개일까?';
     case 'ten': return p.level === 'picture' ? '몇 개를 더 넣었을까?' : '10이 되려면 몇이 필요할까?';
   }
 }
@@ -189,14 +223,15 @@ export function makeProblemSet(mode, level, count = 5, diff = 1) {
   const seen = new Set();
   let guard = 0;
   while (out.length < count && guard++ < 300) {
-    const [a, b] = diff === 1 ? SMALL[mode][level]() : BIG[mode](...SIZES[diff]);
+    const pic = level === 'picture' && pictureSupported(mode, diff);
+    const [a, b] = diff === 1 ? SMALL[mode][level]() : pic ? BIG_PIC[mode][diff]() : BIG[mode](...SIZES[diff]);
     const key = `${a},${b}`;
     if (seen.has(key) && guard < 200) continue;
     seen.add(key);
     const answer = solve(mode, a, b);
     const [left, right] = exprParts(mode, a, b);
     out.push({
-      mode, level: diff === 1 ? level : 'number', diff, a, b, answer, left, right,
+      mode, level: pic || diff === 1 ? level : 'number', diff, a, b, answer, left, right,
       choices: makeChoices(mode, a, b, answer, diff),
     });
   }
