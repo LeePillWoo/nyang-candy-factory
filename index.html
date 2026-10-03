@@ -88,7 +88,7 @@
     }
     .cat {
       width: 149px; height: 163px;   /* 시트 165×181 칸(앉은 모습, 2행 0번)을 0.9배 */
-      background: url(assets/sprites/cat.png?v=7) 0 -163px / 891px 652px no-repeat;
+      background: url(assets/sprites/cat.png?v=8) 0 -163px / 891px 652px no-repeat;
       animation: bob 1.6s ease-in-out infinite;
     }
     .candies { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
@@ -100,9 +100,15 @@
       box-shadow: 0 6px 0 var(--ink);
       padding: 8px 36px; font-size: 30px;
     }
-    svg.peng { width: 70%; height: auto; animation: bob 1s ease-in-out infinite; }
+    .peng {
+      width: 158px; height: 157px;   /* 펭귄 시트 166×165 칸(정면 만세, 2행 0번)을 0.95배 */
+      background: url(assets/sprites/penguin.png?v=8) 0 -157px / 946px 941px no-repeat;
+      animation: bob 1s ease-in-out infinite;
+    }
+    .snow { position: absolute; inset: auto 0 10px; text-align: center; font-size: 26px; letter-spacing: 6px; }
+    .card.penguin .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 60%, #ffffff 60%); }
     @keyframes bob { 50% { transform: translateY(-8px); } }
-    @media (prefers-reduced-motion: reduce) { .cat, svg.peng { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .cat, .peng { animation: none; } }
   </style>
 </head>
 <body>
@@ -122,25 +128,8 @@
 
     <a class="card penguin" href="penguin.html">
       <div class="art">
-        <svg class="peng" viewBox="0 0 320 200" role="img" aria-label="달리는 펭귄">
-          <path d="M0 140 Q80 120 160 128 T320 130 V200 H0 Z" fill="#fff" stroke="#4a3434" stroke-width="5"/>
-          <path d="M20 128 L60 70 L95 128 M210 128 L255 60 L300 128" fill="#e8f6ff" stroke="#4a3434" stroke-width="5" stroke-linejoin="round"/>
-          <g stroke="#4a3434" stroke-width="5" stroke-linejoin="round">
-            <ellipse cx="146" cy="172" rx="16" ry="8" fill="#ffa53c"/>
-            <ellipse cx="178" cy="172" rx="16" ry="8" fill="#ffa53c"/>
-            <ellipse cx="162" cy="118" rx="44" ry="54" fill="#2f3f5f"/>
-            <ellipse cx="114" cy="112" rx="11" ry="28" fill="#2f3f5f" transform="rotate(30 114 112)"/>
-            <ellipse cx="210" cy="112" rx="11" ry="28" fill="#2f3f5f" transform="rotate(-30 210 112)"/>
-            <ellipse cx="162" cy="128" rx="30" ry="38" fill="#fff"/>
-            <circle cx="162" cy="66" r="34" fill="#2f3f5f"/>
-            <path d="M136 70 Q148 52 162 64 Q176 52 188 70 Q186 90 162 92 Q138 90 136 70 Z" fill="#fff"/>
-            <path d="M154 78 L170 78 L162 88 Z" fill="#ffa53c"/>
-            <path d="M132 98 H192 V108 H132 Z" fill="#ff5c7a"/>
-          </g>
-          <circle cx="152" cy="72" r="4" fill="#4a3434"/><circle cx="172" cy="72" r="4" fill="#4a3434"/>
-          <circle cx="144" cy="82" r="5" fill="#ff9fb2" opacity=".7"/><circle cx="180" cy="82" r="5" fill="#ff9fb2" opacity=".7"/>
-          <g fill="#ffa53c" stroke="#4a3434" stroke-width="4"><path d="M250 150 q14 -12 28 0 q-14 12 -28 0 z M278 150 l10 -8 v16 z"/></g>
-        </svg>
+        <div class="peng" role="img" aria-label="만세하는 펭귄"></div>
+        <div class="snow">🐟 ❄️ 🐟</div>
       </div>
       <h2>펭귄 남극탐험</h2>
       <p>정답 깃발이 있는 길로 달려요</p>

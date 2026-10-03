@@ -23,15 +23,78 @@ export const SPRITES = {
       happy: { row: 2, frames: 6, fps: 5 },
     },
   },
+  rabbit: {
+    src: 'rabbit.png',
+    frameW: 146,
+    frameH: 166,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      sit: { row: 1, frames: 6, fps: 8 },
+      fun: { row: 2, frames: 6, fps: 8 },
+    },
+  },
+  bear: {
+    src: 'bear.png',
+    frameW: 151,
+    frameH: 166,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      sit: { row: 1, frames: 6, fps: 8 },
+      fun: { row: 2, frames: 6, fps: 8 },
+    },
+  },
+  shiba: {
+    src: 'shiba.png',
+    frameW: 121,
+    frameH: 166,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      sit: { row: 1, frames: 6, fps: 8 },
+      fun: { row: 2, frames: 6, fps: 8 },
+    },
+  },
+  chick: {
+    src: 'chick.png',
+    frameW: 116,
+    frameH: 166,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      sit: { row: 1, frames: 6, fps: 8 },
+      fun: { row: 2, frames: 6, fps: 8 },
+    },
+  },
+  chipmunk: {
+    src: 'chipmunk.png',
+    frameW: 128,
+    frameH: 166,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      sit: { row: 1, frames: 6, fps: 8 },
+      fun: { row: 2, frames: 6, fps: 8 },
+    },
+  },
+  penguin: {
+    src: 'penguin.png',
+    frameW: 166,
+    frameH: 165,
+    anims: {
+      row0: { row: 0, frames: 6, fps: 8 },
+      row1: { row: 1, frames: 6, fps: 8 },
+      row2: { row: 2, frames: 6, fps: 8 },
+      row3: { row: 3, frames: 6, fps: 8 },
+      row4: { row: 4, frames: 6, fps: 8 },
+      row5: { row: 5, frames: 6, fps: 8 },
+    },
+  },
 };
 
 const SPRITE_DIR = 'assets/sprites/';
 // 그림을 바꾸면 올린다 (폰 캐시에 예전 그림이 남지 않게)
-const SPRITE_VERSION = 7;
+const SPRITE_VERSION = 8;
 
-// 모든 시트 이미지를 불러와 SPRITES[name].image 에 붙인다.
-export function loadSprites() {
-  return Promise.all(Object.entries(SPRITES).map(([name, sheet]) => new Promise((resolve) => {
+// 시트 이미지를 불러와 SPRITES[name].image 에 붙인다. names 를 주면 그 시트만 (페이지마다 필요한 것만).
+export function loadSprites(names = Object.keys(SPRITES)) {
+  return Promise.all(names.map((name) => [name, SPRITES[name]]).filter(([, sheet]) => sheet).map(([name, sheet]) => new Promise((resolve) => {
     const img = new Image();
     img.onload = () => { sheet.image = img; resolve(); };
     img.onerror = () => { console.warn(`스프라이트 로드 실패: ${name}`); resolve(); };

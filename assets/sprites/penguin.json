@@ -1,0 +1,37 @@
+{
+  "src": "penguin.png",
+  "frameW": 166,
+  "frameH": 165,
+  "anims": {
+    "row0": {
+      "row": 0,
+      "frames": 6,
+      "fps": 8
+    },
+    "row1": {
+      "row": 1,
+      "frames": 6,
+      "fps": 8
+    },
+    "row2": {
+      "row": 2,
+      "frames": 6,
+      "fps": 8
+    },
+    "row3": {
+      "row": 3,
+      "frames": 6,
+      "fps": 8
+    },
+    "row4": {
+      "row": 4,
+      "frames": 6,
+      "fps": 8
+    },
+    "row5": {
+      "row": 5,
+      "frames": 6,
+      "fps": 8
+    }
+  }
+}

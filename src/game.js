@@ -1,7 +1,7 @@
 // 냥냥 사탕 공장 — 게임 흐름, 장면 그리기, 입력 처리
 import { loadSprites } from './sprites.js';
 import { Actor, wait } from './actor.js';
-import { CUSTOMER_KEYS, FEATURED_CUSTOMERS, OUTLINE } from './characters.js';
+import { CHARACTERS, CUSTOMER_KEYS, FEATURED_CUSTOMERS, OUTLINE } from './characters.js';
 import { sfx, speak, unlockAudio, isMuted, setMuted } from './audio.js';
 import { makeProblemSet, orderText, questionText } from './problems.js';
 import { solutionSteps } from './work.js';
@@ -1380,7 +1380,8 @@ function drawBagIcon(ctx) {
   ctx.restore();
 }
 
-loadSprites().then(() => {
+// 사탕 공장에 나오는 캐릭터의 시트만 불러온다
+loadSprites([...new Set(Object.values(CHARACTERS).filter((c) => c.kind === 'sprite').map((c) => c.sprite))]).then(() => {
   const go = () => new Game();
   if (document.fonts && document.fonts.load) {
     Promise.race([document.fonts.load('30px Jua'), wait(1.5)]).finally(go);
