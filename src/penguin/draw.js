@@ -209,6 +209,47 @@ export function drawFlag(ctx, p, text, laneIdx, alpha, state) {
   ctx.restore();
 }
 
+// ── 문제 간판 (깃발 세 개 위에 걸린 큰 판) ─────────────────
+// p = 가운데 길 바닥 위치, parts = [앞, 빈칸, 뒤] 글자, answer 가 있으면 빈칸에 정답을 초록으로
+export function drawQuizSign(ctx, p, parts, alpha, answer = null) {
+  const s = p.s;
+  const bw = s * 3.3, bh = s * 0.66;
+  const bottom = p.y - s * 1.12;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = Math.max(1.5, s * 0.02);
+  ctx.strokeStyle = OUTLINE;
+  ctx.lineJoin = 'round';
+  // 양쪽 기둥
+  ctx.fillStyle = '#c99366';
+  for (const sx of [-1, 1]) {
+    rr(ctx, p.x + sx * bw * 0.47 - s * 0.03, bottom - bh * 0.5, s * 0.06, p.y - bottom + bh * 0.5, s * 0.015);
+    ctx.fill(); ctx.stroke();
+  }
+  // 판 (그림자 + 흰 판)
+  ctx.fillStyle = OUTLINE;
+  rr(ctx, p.x - bw / 2, bottom - bh + s * 0.05, bw, bh, s * 0.14); ctx.fill();
+  ctx.fillStyle = '#ffffff';
+  rr(ctx, p.x - bw / 2, bottom - bh, bw, bh, s * 0.14); ctx.fill(); ctx.stroke();
+  // 글자: 앞 · ? · 뒤 (빈칸만 색을 바꿈)
+  const [left, , right] = parts;
+  const mid = answer === null ? '?' : String(answer);
+  const len = (left + mid + right).length;
+  const fs = Math.min(bh * 0.72, (bw * 0.9) / (len * 0.52));
+  if (fs > 3) {
+    ctx.font = `${fs}px Jua, sans-serif`;
+    ctx.textBaseline = 'middle';
+    ctx.textAlign = 'left';
+    const wl = ctx.measureText(left).width, wm = ctx.measureText(mid).width, wr = ctx.measureText(right).width;
+    let x = p.x - (wl + wm + wr) / 2;
+    const y = bottom - bh / 2 + fs * 0.06;
+    ctx.fillStyle = OUTLINE; ctx.fillText(left, x, y); x += wl;
+    ctx.fillStyle = answer === null ? '#ff5f8f' : '#23a86b'; ctx.fillText(mid, x, y); x += wm;
+    ctx.fillStyle = OUTLINE; ctx.fillText(right, x, y);
+  }
+  ctx.restore();
+}
+
 // ── 남극 기지 ─────────────────────────────────────────
 export function drawBase(ctx, p, alpha, flagUp, t) {
   const s = p.s;

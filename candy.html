@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=9">
+  <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
   <div id="stage">
@@ -17,8 +17,8 @@
 
     <!-- 상단 HUD -->
     <div id="hud">
-      <a id="btn-games" class="chip" href="./" aria-label="게임 고르기">🎮</a>
-      <button id="btn-home" class="chip" aria-label="처음으로" hidden>🏠</button>
+      <a id="btn-games" class="chip" href="./" aria-label="게임 고르기 (처음 화면)">🏠</a>
+      <button id="btn-home" class="chip" aria-label="뒤로 (게임 로비)" hidden>🔙</button>
       <button id="btn-sound" class="chip" aria-label="소리">🔊</button>
       <div id="dots" hidden></div>
       <div id="coins" class="chip coins"><span class="coin"></span><b id="coin-count">0</b></div>
@@ -90,17 +90,17 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/sprites.js": "./src/sprites.js?v=9",
-      "./src/characters.js": "./src/characters.js?v=9",
-      "./src/actor.js": "./src/actor.js?v=9",
-      "./src/audio.js": "./src/audio.js?v=9",
-      "./src/problems.js": "./src/problems.js?v=9",
-      "./src/work.js": "./src/work.js?v=9",
-      "./src/viewport.js": "./src/viewport.js?v=9",
-      "./src/blocks.js": "./src/blocks.js?v=9"
+      "./src/sprites.js": "./src/sprites.js?v=10",
+      "./src/characters.js": "./src/characters.js?v=10",
+      "./src/actor.js": "./src/actor.js?v=10",
+      "./src/audio.js": "./src/audio.js?v=10",
+      "./src/problems.js": "./src/problems.js?v=10",
+      "./src/work.js": "./src/work.js?v=10",
+      "./src/viewport.js": "./src/viewport.js?v=10",
+      "./src/blocks.js": "./src/blocks.js?v=10"
     }
   }
   </script>
-  <script type="module" src="src/game.js?v=9"></script>
+  <script type="module" src="src/game.js?v=10"></script>
 </body>
 </html>

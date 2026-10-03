@@ -374,3 +374,8 @@ button.chip:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink);
 }
 
 a.chip { text-decoration: none; color: var(--ink); }
+
+/* 세로 화면: 왼쪽엔 🏠 🔙 만, 🔊 는 오른쪽 코인 옆으로 (가운데 진행 점과 겹치지 않게) */
+#stage.portrait #hud > :not(#btn-games):not(#btn-home) { order: 1; }
+#stage.portrait #btn-sound { margin-left: auto; }
+#stage.portrait #coins { margin-left: 0; }

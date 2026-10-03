@@ -79,7 +79,7 @@ body.penguin #coins { margin-left: 0; }
 .review-title { font-size: 22px; color: #8a6f66; }
 
 /* 세로 화면 */
-#stage.portrait #quiz { width: auto; left: 20px; right: 20px; top: 100px; }
+#stage.portrait #quiz { width: auto; left: 20px; right: 20px; top: 140px; }
 #stage.portrait .q-expr { font-size: 58px; }
 #stage.portrait .q-expr.long { font-size: 42px; }
 #stage.portrait .q-choices span { font-size: 44px; }
@@ -88,3 +88,6 @@ body.penguin #coins { margin-left: 0; }
 #stage.portrait #dots { gap: 8px; padding: 6px 12px; }
 #stage.portrait .dot { width: 32px; height: 32px; font-size: 20px; }
 #stage.portrait #fish { font-size: 24px; padding: 0 12px 0 8px; }
+/* 세로 화면: 오른쪽에 🔊 🐟 코인이 모이므로 진행 점은 한 줄 아래로 */
+#stage.portrait #fish { margin-left: 0; }
+#stage.portrait #dots { top: 64px; }

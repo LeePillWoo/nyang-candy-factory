@@ -13,11 +13,13 @@ const GATES = 5;              // 한 판 = 문제 5개 → 기지 도착
 const ZP = 2;                 // 펭귄이 서 있는 깊이
 const FAR = 52;               // 지평선 깊이 (여기서 물체가 생긴다)
 const SPEED = 6;              // 달리는 속도 (단위/초)
-const THINK = { 1: 7, 2: 10, 3: 13, 4: 17 };  // 문제를 보고 깃발에 닿기까지 시간(초)
+const THINK = { 1: 6.5, 2: 6.5, 3: 7, 4: 7 };  // 깃발이 나타나서 펭귄에 닿기까지 시간(초). 문제는 깃발 위 간판에 있어 가까워져야 읽힌다
 const HOLE_RATE = { 1: 0.35, 2: 0.3, 3: 0.25, 4: 0.2 };  // 생기는 물체 중 얼음 구멍 비율 (어려울수록 줄여 계산에 집중)
 const JUMP_TIME = 0.75;
-const SLOW = 0.3;             // 깃발 통과 슬로모션 배속
-const SLOW_NEAR = 3;          // 깃발이 이만큼(깊이) 가까워지면 느려지기 시작
+// 깃발 통과 슬로모션 — 어려울수록 일찍, 더 느리게 (생각할 시간). 실제로 느린 시간 ≈ NEAR / (6 × SLOW)초: 1.7 · 3 · 4.5 · 6.7초
+const SLOW = { 1: 0.3, 2: 0.25, 3: 0.22, 4: 0.2 };        // 배속
+const SLOW_NEAR = { 1: 3, 2: 4.5, 3: 6, 4: 8 };          // 깃발이 이만큼(깊이) 가까워지면 느려지기 시작
+const SAY_NEAR = 14;          // 간판이 읽힐 만큼 가까워지면 문제를 읽어 준다
 const SLOW_HOLD = 0.6;        // 통과 뒤 슬로모션을 유지하는 시간(실제 초)
 const OP_WORD = { add: '더하기', sub: '빼기', mul: '곱하기', div: '나누기', ten: '더하기' };
 
@@ -237,7 +239,6 @@ class PenguinGame {
     $('#pad').hidden = true;
     $('#dots').hidden = true;
     $('#btn-home').hidden = true;
-    $('#btn-games').hidden = false;
   }
 
   start(mode) {
@@ -255,7 +256,6 @@ class PenguinGame {
     $('#pad').hidden = false;
     $('#dots').hidden = false;
     $('#btn-home').hidden = false;
-    $('#btn-games').hidden = true;
     this.renderDots();
     speak('출발! 정답 깃발이 있는 길로 달려가요!');
   }
@@ -267,7 +267,7 @@ class PenguinGame {
     const z = ZP + SPEED * THINK[p.diff];
     // 깃발 바로 앞뒤의 얼음 구멍은 치워서 계산에만 집중하게
     this.objects = this.objects.filter((o) => !(o.kind === 'hole' && Math.abs(o.z - z) < 10));
-    this.objects.push({ kind: 'gate', z, x: 0, p, choices: p.choices.slice(), picked: null });
+    this.objects.push({ kind: 'gate', z, x: 0, p, choices: p.choices.slice(), picked: null, said: false });
     this.phase = 'quiz';
     const quiz = $('#quiz');
     const ex = quiz.querySelector('.q-expr');
@@ -277,10 +277,13 @@ class PenguinGame {
     const chips = quiz.querySelectorAll('.q-choices span');
     p.choices.forEach((n, i) => { chips[i].textContent = n; chips[i].className = `lane${i}`; });
     quiz.querySelector('.q-msg').textContent = '정답 깃발 쪽 길로 가요!';
-    quiz.hidden = false;
-    quiz.style.animation = 'none'; void quiz.offsetWidth; quiz.style.animation = '';
+    // 문제는 깃발 위 간판에 걸려 다가온다. 위 문제판은 통과한 뒤 결과를 보여 줄 때만
+    quiz.hidden = true;
     this.renderChips();
     this.renderDots();
+  }
+
+  sayProblem(p) {
     if (p.mode === 'ten') speak(`${p.a} 더하기 몇은 10?`);
     else speak(`${p.a} ${OP_WORD[p.mode]} ${p.b}는?`);
   }
@@ -301,6 +304,9 @@ class PenguinGame {
     const chips = document.querySelectorAll('#quiz .q-choices span');
     const msg = $('#quiz .q-msg');
     $('#quiz .q-expr').innerHTML = `${p.left}<span class="ans">${p.answer}</span>${p.right}`;
+    const quiz = $('#quiz');
+    quiz.hidden = false;
+    quiz.style.animation = 'none'; void quiz.offsetWidth; quiz.style.animation = '';
     if (n === p.answer) {
       this.results.push('star');
       sfx.correct();
@@ -363,9 +369,10 @@ class PenguinGame {
   update(dt) {
     // 깃발 통과 슬로모션: 깃발이 코앞에 오면 느려지고, 지나간 뒤 잠깐 유지했다가 원래 속도로
     const gate = this.state === 'run' && this.objects.find((o) => o.kind === 'gate' && o.picked === null);
-    const near = gate && gate.z - ZP < SLOW_NEAR && this.fallT <= 0;
+    const near = gate && gate.z - ZP < SLOW_NEAR[this.diff] && this.fallT <= 0;
+    if (gate && !gate.said && gate.z - ZP < SAY_NEAR) { gate.said = true; this.sayProblem(gate.p); }
     if (this.slowHold > 0) this.slowHold -= dt;
-    const target = near || this.slowHold > 0 ? SLOW : 1;
+    const target = near || this.slowHold > 0 ? SLOW[this.diff] : 1;
     this.timeScale += (target - this.timeScale) * Math.min(1, dt * (target < 1 ? 8 : 3));
     dt *= this.timeScale;
 
@@ -529,7 +536,7 @@ class PenguinGame {
     const ctx = this.ctx;
     const t = this.time;
     // 슬로모션일 때 펭귄 쪽으로 살짝 당겨 보기
-    const zoom = 1 + (1 - this.timeScale) / (1 - SLOW) * 0.08;
+    const zoom = 1 + (1 - this.timeScale) / (1 - SLOW[this.diff]) * 0.08;
     ctx.save();
     if (zoom > 1.001) {
       const zx = P.cx + this.px * P.fx / ZP, zy = P.playerY - 60;
@@ -557,6 +564,7 @@ class PenguinGame {
           break;
         }
         case 'gate':
+          D.drawQuizSign(ctx, p, [o.p.left, '?', o.p.right], alpha, o.picked === null ? null : o.p.answer);
           o.choices.forEach((n, i) => {
             const state = o.picked === null ? null : i === o.right ? 'right' : i === o.picked ? 'wrong' : 'dim';
             D.drawFlag(ctx, proj(i - 1, o.z), n, i, alpha * (state === 'dim' ? 0.5 : 1), state);
@@ -568,7 +576,7 @@ class PenguinGame {
     for (const p of this.particles) D.drawParticle(ctx, p);
     ctx.restore();
     // 슬로모션 테두리 그늘
-    const k = (1 - this.timeScale) / (1 - SLOW);
+    const k = (1 - this.timeScale) / (1 - SLOW[this.diff]);
     if (k > 0.02) {
       const g = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
       g.addColorStop(0, 'rgba(20, 60, 110, 0)');
