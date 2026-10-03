@@ -28,7 +28,7 @@ export const CHARACTERS = {
     name: '호돌이',
     kind: 'sprite',
     sprite: 'tiger',
-    scale: 1.08,          // 코드로 그린 손님들(키 약 165px)과 비슷하게
+    scale: 1.08,          // 다른 손님들(키 약 150~165px)과 비슷하게
     faces: 'right',
     height: 165,
     anims: {
@@ -39,19 +39,46 @@ export const CHARACTERS = {
     },
   },
 
-  bear:   shape('곰돌이', { body: '#b98057', belly: '#e9c9a4', ears: 'round', inner: '#e9c9a4', face: 'muzzle', muzzle: '#f0dcc0', tail: 'nub' }),
-  rabbit: shape('토순이', { body: '#fbf3ea', belly: '#ffffff', ears: 'long', inner: '#ffb7c5', face: 'bunny', tail: 'puff' }),
-  pig:    shape('꿀꿀이', { body: '#f8b9c6', belly: '#fdd6de', ears: 'flop-tri', inner: '#ee8fa4', face: 'snout', snout: '#f39cb0', tail: 'curl' }),
-  fox:    shape('여우비', { body: '#f4934a', belly: '#fff3e6', ears: 'pointy', inner: '#fff3e6', tip: '#5a3a30', face: 'fox', tail: 'fox' }),
-  dog:    shape('멍멍이', { body: '#ecd0a3', belly: '#fff6e8', ears: 'floppy', inner: '#a8714a', face: 'muzzle', muzzle: '#fff6e8', patch: '#c6915e', tail: 'wag' }),
-  panda:  shape('판다랑', { body: '#ffffff', belly: '#ffffff', limbs: '#3d3535', ears: 'round', earColor: '#3d3535', inner: '#3d3535', face: 'panda', tail: 'nub' }),
+  // idle = 앉아서 기다리기, happy = 정답!, eat = 뺄셈에서 사탕 받아먹기
+  // (시트 행: walk=걷기, sit=앉은 표정들, fun=하트·만세)
+  rabbit:   spriteCustomer('토순이', 'rabbit', 1.12, {
+    idle: { anim: 'fun', seq: [5, 5, 5, 5, 5, 0, 0, 0], fps: 3 },
+    happy: { anim: 'fun', seq: [2, 3, 4, 4, 3], fps: 5 },
+    eat: { anim: 'sit', seq: [1, 2, 1, 2], fps: 6 },
+  }),
+  bear:     spriteCustomer('곰돌이', 'bear', 1.25, {
+    idle: { anim: 'sit', seq: [0, 0, 0, 0, 0, 3, 3, 3], fps: 3 },
+    happy: { anim: 'fun', seq: [3, 4, 4, 2], fps: 5 },
+    eat: { anim: 'sit', seq: [1, 2, 1, 2], fps: 6 },
+  }),
+  shiba:    spriteCustomer('시바', 'shiba', 1.25, {
+    idle: { anim: 'sit', seq: [3, 3, 3, 3, 3, 4, 4, 4], fps: 3 },
+    happy: { anim: 'fun', seq: [3, 4, 2, 4], fps: 5 },
+    eat: { anim: 'sit', seq: [1, 3, 1, 3], fps: 6 },
+  }),
+  chick:    spriteCustomer('삐약이', 'chick', 1.22, {
+    idle: { anim: 'sit', seq: [3, 3, 3, 3, 3, 0, 0, 0], fps: 3 },
+    happy: { anim: 'fun', seq: [3, 4, 2, 4], fps: 5 },
+    eat: { anim: 'sit', seq: [1, 3, 1, 3], fps: 6 },
+  }),
+  chipmunk: spriteCustomer('다람이', 'chipmunk', 1.28, {
+    idle: { anim: 'sit', seq: [3, 3, 3, 3, 3, 4, 4, 4], fps: 3 },
+    happy: { anim: 'fun', seq: [3, 4, 2, 4], fps: 5 },
+    eat: { anim: 'sit', seq: [1, 3, 1, 3], fps: 6 },
+  }),
 };
 
-// 코드로 그린 손님들 — 무작위로 나온다
-export const CUSTOMER_KEYS = ['bear', 'rabbit', 'pig', 'fox', 'dog', 'panda'];
-// 스프라이트 손님 — 한 판(손님 5명)에 각자 한 번씩 꼭 나온다. 새 동물 시트를 넣으면 여기에 추가.
-export const FEATURED_CUSTOMERS = ['tiger'];
+// 스프라이트 손님 — 한 판(손님 5명)에 이 중에서 겹치지 않게 나온다. 새 동물 시트를 넣으면 여기에 추가.
+export const FEATURED_CUSTOMERS = ['tiger', 'rabbit', 'bear', 'shiba', 'chick', 'chipmunk'];
+// 코드로 그린 손님 — 스프라이트 손님이 5마리보다 적을 때 빈자리를 채운다 (지금은 모두 스프라이트로 바꿔서 비어 있음).
+// 코드 동물이 필요하면 CHARACTERS 에 shape('이름', { body, belly, ears, face, tail, … }) 로 만들고 여기에 키를 넣으면 된다.
+export const CUSTOMER_KEYS = [];
 
+function spriteCustomer(name, sprite, scale, anims) {
+  return { name, kind: 'sprite', sprite, scale, faces: 'right', height: 160, anims: { walk: { anim: 'walk' }, ...anims } };
+}
+
+// eslint-disable-next-line no-unused-vars
 function shape(name, look) {
   return {
     name,

@@ -7,6 +7,7 @@ import { sfx, speak, unlockAudio, isMuted, setMuted } from '../audio.js';
 import { makeProblemSet, MODES } from '../problems.js';
 import { safeInsets, visibleArea, onViewportChange } from '../viewport.js';
 import * as D from './draw.js';
+import { SPRITES, loadSprites, drawSpriteFrame } from '../sprites.js';
 
 const GATES = 5;              // 한 판 = 문제 5개 → 기지 도착
 const ZP = 2;                 // 펭귄이 서 있는 깊이
@@ -551,18 +552,79 @@ class PenguinGame {
     const x = P.cx + this.px * P.fx / ZP;
     const running = this.state === 'menu' || (this.state === 'run' && this.speed > 0.5 && !this.arrived);
     const mood = this.fallT > 0 ? 'fall' : this.mood;
-    const view = mood === 'run' ? 'back' : 'front';
-    D.drawPenguin(ctx, x, P.playerY, S, {
-      t, view, mood,
-      run: running ? 1 : 0.15,
-      dir: clamp((this.lane - this.px) * 2, -1, 1),
-      lift: this.jumpLift() * S * 0.7,
-      fallP: this.fallT > 0 ? clamp((1.2 - this.fallT) / 0.25, 0, 1) * clamp(this.fallT / 0.25, 0, 1) : 0,
-    });
+    const dir = clamp((this.lane - this.px) * 2, -1, 1);
+    const lift = this.jumpLift() * S * 0.7;
+    const fallP = this.fallT > 0 ? clamp((1.2 - this.fallT) / 0.25, 0, 1) * clamp(this.fallT / 0.25, 0, 1) : 0;
+    if (SPRITES.penguin.image) this.drawPenguinSprite(ctx, t, x, S, { running, mood, dir, lift, fallP });
+    else D.drawPenguin(ctx, x, P.playerY, S, { t, view: mood === 'run' ? 'back' : 'front', mood, run: running ? 1 : 0.15, dir, lift, fallP });
+  }
+
+  // 펭귄 시트(6×6): 0행 뒷모습 걷기·옆모습, 1행 정면·옆·점프 뒷모습, 3행 놀람, 4행 만세 …
+  // [행, 칸] 목록을 fps 로 돌린다
+  drawPenguinSprite(ctx, t, x, S, { running, mood, dir, lift, fallP }) {
+    const F = PENGUIN_FRAMES;
+    let frames;
+    if (mood === 'fall') frames = F.fall;
+    else if (mood === 'happy') frames = F.happy;
+    else if (mood === 'oops') frames = F.oops;
+    else if (lift > 2) frames = F.jump;
+    else if (dir > 0.15) frames = F.right;
+    else if (dir < -0.15) frames = F.left;
+    else frames = running ? F.run : F.stand;
+    const fps = frames === F.run ? 9 : frames === F.happy ? 4 : 3;
+    const i = Math.floor(Math.abs(t || 0) * fps) % frames.length;
+    const [row, col] = frames[i] || frames[0];
+    const sheet = SPRITES.penguin;
+    const scale = S / 130;   // 시트 속 펭귄 키 ≈ 130px
+    const y = P.playerY;
+
+    // 그림자
+    ctx.save();
+    ctx.globalAlpha = 0.18 * (1 - Math.min(0.6, lift / S));
+    ctx.fillStyle = '#000';
+    ctx.beginPath(); ctx.ellipse(x, y, S * 0.34, S * 0.07, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    if (mood === 'fall') {
+      // 얼음 구멍에 쏙: 물구멍 → 물 위쪽만 보이게 잘라서 → 앞쪽 물결
+      ctx.save();
+      ctx.lineWidth = Math.max(2, S * 0.03);
+      ctx.strokeStyle = D.OUTLINE;
+      ctx.fillStyle = '#2a6db0';
+      ctx.beginPath(); ctx.ellipse(x, y, S * 0.42, S * 0.12, 0, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+      ctx.beginPath(); ctx.rect(x - S * 1.5, y - S * 3, S * 3, S * 3); ctx.clip();
+      ctx.translate(x, y + S * 0.45 * fallP);
+      ctx.rotate(Math.sin(t * 18) * 0.1);
+      drawSpriteFrame(ctx, sheet, `row${row}`, col, scale);
+      ctx.restore();
+      ctx.save();
+      ctx.fillStyle = 'rgba(111, 182, 239, .9)';
+      ctx.beginPath(); ctx.ellipse(x, y + S * 0.02, S * 0.36, S * 0.08, 0, 0, Math.PI); ctx.fill();
+      ctx.restore();
+      return;
+    }
+    ctx.save();
+    ctx.translate(x, y - lift);
+    if (running && frames === F.run) ctx.rotate(Math.sin(t * 9) * 0.05);  // 뒤뚱뒤뚱
+    drawSpriteFrame(ctx, sheet, `row${row}`, col, scale);
+    ctx.restore();
   }
 }
 
+const PENGUIN_FRAMES = {
+  run:   [[0, 0], [0, 1], [0, 0], [0, 2]],   // 뒷모습 걷기
+  stand: [[0, 0]],
+  right: [[0, 3]],                            // 오른쪽 길로
+  left:  [[1, 2]],                            // 왼쪽 길로
+  jump:  [[1, 3]],                            // 발을 든 뒷모습
+  happy: [[4, 4], [1, 0], [4, 4], [0, 5]],    // 정면 만세
+  oops:  [[3, 5], [4, 0]],                    // 깜짝!
+  fall:  [[4, 0]],
+};
+
 const go = () => new PenguinGame();
-if (document.fonts && document.fonts.load) {
-  Promise.race([document.fonts.load('30px Jua'), new Promise((r) => setTimeout(r, 1500))]).finally(go);
-} else go();
+const fontReady = document.fonts && document.fonts.load
+  ? Promise.race([document.fonts.load('30px Jua'), new Promise((r) => setTimeout(r, 1500))])
+  : Promise.resolve();
+// 펭귄 시트만 불러온다 (실패하면 코드로 그린 펭귄으로)
+Promise.all([fontReady, loadSprites(['penguin'])]).finally(go);

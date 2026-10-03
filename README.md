@@ -30,7 +30,7 @@ python tools/build_single.py penguin.html    # → dist/penguin.html
 
 ### GitHub Pages 배포 시 버전 올리기
 
-GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `candy.html`·`penguin.html` 안의 `?v=8` 을 **모두** 다음 숫자(`?v=9`)로 바꿔 주세요. (CSS, 시작 스크립트, importmap 안의 모듈들. 새 모듈을 만들면 importmap 에도 추가)
+GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `candy.html`·`penguin.html` 안의 `?v=9` 를 **모두** 다음 숫자(`?v=10`)로 바꿔 주세요. (CSS, 시작 스크립트, importmap 안의 모듈들. 새 모듈을 만들면 importmap 에도 추가)
 그래야 폰에서 예전 파일과 새 파일이 섞이지 않고 한꺼번에 새로 받아집니다.
 
 기기에서 화면이 잘리거나 너무 크게 보이면 주소 끝에 `?debug` 를 붙여 열어 보세요(예: `.../nyang-candy-factory/candy.html?debug`). 화면 왼쪽 아래에 브라우저가 알려 주는 화면 크기와 실제로 쓴 크기가 표시됩니다.
@@ -84,7 +84,8 @@ GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 
 - 틀리거나 구멍에 빠져도 벌은 없어요: 잠깐 미끄러지고 정답을 보여 준 뒤 계속 달립니다. 틀린 문제는 결과 화면의 **다시 보기**에 정답과 함께 나와요.
 - 문제를 보고 깃발에 닿기까지 시간은 난이도별로 7·10·13·17초. 깃발 가까이에는 얼음 구멍이 생기지 않아 계산에 집중할 수 있어요.
 - 5문제를 지나면 남극 기지에 도착(약 1~1.5분). 정답 하나에 코인 3개(+ 난이도 보너스), 물고기 2마리에 코인 1개.
-- 펭귄·얼음길·깃발·기지는 모두 Canvas 코드로 그렸습니다(`src/penguin/draw.js`).
+- 주인공 펭귄은 스프라이트 시트(`assets/sprites/penguin.png`, 6×6)로 그립니다. 상황별 프레임은 `src/penguin/game.js` 의 `PENGUIN_FRAMES` 에 `[행, 칸]` 목록으로 적혀 있어요(달리기 뒷모습, 좌우 이동, 점프, 만세, 놀람, 구멍 빠짐). 시트를 못 불러오면 예전 코드 펭귄(`src/penguin/draw.js`)으로 그립니다.
+- 얼음길·깃발·기지·물고기는 Canvas 코드로 그렸습니다(`src/penguin/draw.js`).
 
 ## 폴더 구조
 
@@ -96,7 +97,7 @@ style.css             두꺼운 외곽선의 스티커 느낌 UI (두 게임 공
 penguin.css           펭귄 게임용 얼음 색·문제판·조작 버튼
 src/
   sprites.js          SPRITES: 스프라이트 시트 메타 + 로더 + 프레임 그리기
-  characters.js       CHARACTERS: 캐릭터 정의 (kind: 'sprite' | 'shape'), 손님 6종 코드 드로잉
+  characters.js       CHARACTERS: 캐릭터 정의 (kind: 'sprite' | 'shape'), 손님 6종(호랑이·토끼·곰·시바·병아리·다람쥐 스프라이트)
   actor.js            Actor: moveTo(x)→Promise, hop(), carry(), say(), 공통 렌더 루프
   audio.js            WebAudio 효과음, 음성 안내
   problems.js         모드×레벨×난이도별 문제·보기 생성
@@ -110,7 +111,10 @@ assets/
   raw/cat_sheet.png   원본 고양이 시트 (6×6 칸, 흰 배경)
   raw/tiger_sheet.png 원본 호랑이 시트 (6×6 칸, 흰 배경)
   sprites/cat.png     sprite_pack.py 로 배경을 지우고 다시 포장한 시트 (+ cat.json 메타)
+  raw/{rabbit,bear,shiba,chick,chipmunk,penguin}_sheet.png  새 동물 원본 시트
   sprites/tiger.png   〃 (+ tiger.json)
+  sprites/{rabbit,bear,shiba,chick,chipmunk}.png  손님 시트 (walk / sit / fun 행)
+  sprites/penguin.png 펭귄 남극탐험 주인공 시트 (row0~row5)
 tools/
   sprite_pack.py      스프라이트 시트 자동 정리 도구
   build_single.py     게임 하나를 HTML 파일 하나로 묶기
@@ -122,7 +126,7 @@ tools/
 - **CHARACTERS** — `kind: 'sprite'` 는 SPRITES 시트를 쓰고, `anims[이름] = { anim, seq?, fps?, scale? }` 로 프레임 순서를 재정의할 수 있습니다. `kind: 'shape'` 는 `draw(ctx, pose)` 로 Canvas에 직접 그립니다.
 - **Actor** — 두 종류 캐릭터를 같은 방식으로 다룹니다. 게임 로직은 `idle` / `walk`(있으면 `happy`, `sad`)만 호출하므로 캐릭터를 바꿔도 게임 코드는 그대로입니다. 없는 애니 이름은 `idle` 로 대체됩니다.
 - 고양이 냥이 = 직원(스프라이트).
-- 손님: 호랑이 호돌이(스프라이트)는 한 판에 꼭 한 번(`FEATURED_CUSTOMERS`), 나머지 자리는 코드로 그린 곰·토끼·돼지·여우·강아지·판다(`CUSTOMER_KEYS`) 중 무작위.
+- 손님: 모두 스프라이트 동물. 호랑이 호돌이·토끼 토순이·곰돌이·시바·병아리 삐약이·다람쥐 다람이(`FEATURED_CUSTOMERS`) 중 5마리가 한 판에 한 번씩 무작위로 나옵니다. 코드로 그린 손님(`CUSTOMER_KEYS`)은 지금 비어 있지만 기능은 남아 있어 언제든 다시 넣을 수 있어요.
 
 ## 🐾 새 캐릭터 스프라이트로 교체하기
 
@@ -178,6 +182,13 @@ python tools/sprite_pack.py assets/raw/cat_sheet.png -o assets/sprites/cat --bg 
     --anim walk=0 --anim groom=1 --anim happy=2 --anim surprise=3 --fps walk=10 --scale 0.85
 python tools/sprite_pack.py assets/raw/tiger_sheet.png -o assets/sprites/tiger --bg white --grid 6x6 \
     --anim walk=0 --anim giggle=1 --anim happy=2 --fps walk=10 --scale 0.85
+# 토끼·곰·시바·병아리·다람쥐 (0행 걷기, 1행 앉기, 2행 신남)
+for n in rabbit bear shiba chick chipmunk; do
+  python tools/sprite_pack.py assets/raw/${n}_sheet.png -o assets/sprites/$n --bg white --bg-tol 62 --grid 6x6 \
+      --anim walk=0 --anim sit=1 --anim fun=2 --fps walk=10 --scale 0.95
+done
+# 펭귄 (행 이름 없이 row0~row5 로 전부)
+python tools/sprite_pack.py assets/raw/penguin_sheet.png -o assets/sprites/penguin --bg white --bg-tol 62 --grid 6x6 --all --scale 0.95
 ```
 
 그림을 바꾼 뒤에는 `src/sprites.js` 의 `SPRITE_VERSION` 을 1 올려 주세요(폰에 예전 그림이 캐시로 남지 않게).
@@ -234,10 +245,10 @@ this.cat = new Actor('dogStaff', CAT_HOME, FLOOR, { facing: 'right', speed: 300 
 
 손님으로 쓰려면 `src/characters.js` 에서:
 
-- 스프라이트 동물은 `FEATURED_CUSTOMERS` 에 키를 추가 → 한 판(손님 5명)에 각자 한 번씩 꼭 나옵니다. 남는 자리는 코드로 그린 손님이 무작위로 채웁니다.
+- 스프라이트 동물은 `spriteCustomer(...)` 로 정의하고 `FEATURED_CUSTOMERS` 에 키를 추가 → 무작위로 골라 한 판(손님 5명)에 겹치지 않게 나옵니다. 5마리보다 적으면 남는 자리는 `CUSTOMER_KEYS` 손님이 채웁니다.
 - 코드로 그린 동물은 `CUSTOMER_KEYS` 에 추가 → 무작위로 나옵니다.
 
-손님 애니메이션 이름은 `idle`(앉아 있기), `walk`, `happy`(정답), `eat`(뺄셈에서 사탕 받아먹기)를 씁니다. 손님은 등장할 때 왼쪽을 보며 걸어 들어오고, `faces` 값에 따라 자동으로 좌우 반전됩니다. `scale` 은 코드 손님들(키 약 165px)과 비슷해지게 맞추세요(호랑이는 1.08).
+손님 애니메이션 이름은 `idle`(앉아 있기), `walk`, `happy`(정답), `eat`(뺄셈에서 사탕 받아먹기)를 씁니다. 손님은 등장할 때 왼쪽을 보며 걸어 들어오고, `faces` 값에 따라 자동으로 좌우 반전됩니다. `scale` 은 다른 손님들(키 약 150~165px)과 비슷해지게 맞추세요(호랑이 1.08, 토끼 1.12, 곰·시바 1.25 …).
 
 ### 코드로 그린 캐릭터(shape)를 스프라이트로, 또는 그 반대로
 

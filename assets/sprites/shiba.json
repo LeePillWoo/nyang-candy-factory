@@ -1,0 +1,22 @@
+{
+  "src": "shiba.png",
+  "frameW": 121,
+  "frameH": 166,
+  "anims": {
+    "walk": {
+      "row": 0,
+      "frames": 6,
+      "fps": 10.0
+    },
+    "sit": {
+      "row": 1,
+      "frames": 6,
+      "fps": 8
+    },
+    "fun": {
+      "row": 2,
+      "frames": 6,
+      "fps": 8
+    }
+  }
+}
