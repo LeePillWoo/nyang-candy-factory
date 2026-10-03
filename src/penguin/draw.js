@@ -171,7 +171,7 @@ export function drawFish(ctx, x, y, size, t, color = ORANGE) {
 const BOARD = ['#ff8fab', '#ffd65c', '#7cc8f8'];
 export function drawFlag(ctx, p, text, laneIdx, alpha, state) {
   const s = p.s;
-  const bw = s * 0.74, bh = s * 0.36;
+  const bw = s * 0.9, bh = s * 0.48;
   const poleH = s * 0.62;
   ctx.save();
   ctx.globalAlpha = alpha;
@@ -213,8 +213,8 @@ export function drawFlag(ctx, p, text, laneIdx, alpha, state) {
 // p = 가운데 길 바닥 위치, parts = [앞, 빈칸, 뒤] 글자, answer 가 있으면 빈칸에 정답을 초록으로
 export function drawQuizSign(ctx, p, parts, alpha, answer = null) {
   const s = p.s;
-  const bw = s * 3.3, bh = s * 0.66;
-  const bottom = p.y - s * 1.12;
+  const bw = s * 4.2, bh = s * 1.0;
+  const bottom = p.y - s * 1.24;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.lineWidth = Math.max(1.5, s * 0.02);
@@ -235,7 +235,7 @@ export function drawQuizSign(ctx, p, parts, alpha, answer = null) {
   const [left, , right] = parts;
   const mid = answer === null ? '?' : String(answer);
   const len = (left + mid + right).length;
-  const fs = Math.min(bh * 0.72, (bw * 0.9) / (len * 0.52));
+  const fs = Math.min(bh * 0.74, (bw * 0.92) / (len * 0.5));
   if (fs > 3) {
     ctx.font = `${fs}px Jua, sans-serif`;
     ctx.textBaseline = 'middle';
