@@ -145,7 +145,7 @@ function drawBubble(ctx, x, y, text) {
   ctx.font = '700 30px Jua, "Apple SD Gothic Neo", "Malgun Gothic", sans-serif';
   const w = Math.max(64, ctx.measureText(text).width + 36);
   const h = 54;
-  const bx = Math.max(10, Math.min(1270 - w, x - w / 2));
+  const bx = Math.max(10, Math.min((Actor.stageW || 1280) - 10 - w, x - w / 2));
   ctx.lineWidth = 5;
   ctx.strokeStyle = OUTLINE;
   ctx.fillStyle = '#fff';
