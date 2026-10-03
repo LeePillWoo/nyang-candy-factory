@@ -91,6 +91,7 @@ button.chip:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink);
   align-items: center;
   gap: 12px;
   pointer-events: none;
+  z-index: 5;   /* 메뉴·결과 화면 위에서도 버튼을 누를 수 있게 */
 }
 #hud > * { pointer-events: auto; }
 #coins { margin-left: auto; font-size: 32px; padding: 0 18px 0 12px; }
@@ -371,3 +372,5 @@ button.chip:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink);
   white-space: pre-wrap; word-break: break-all;
   pointer-events: none;
 }
+
+a.chip { text-decoration: none; color: var(--ink); }

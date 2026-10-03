@@ -5,6 +5,7 @@ import { CUSTOMER_KEYS, OUTLINE } from './characters.js';
 import { sfx, speak, unlockAudio, isMuted, setMuted } from './audio.js';
 import { makeProblemSet, orderText, questionText } from './problems.js';
 import { solutionSteps } from './work.js';
+import { safeInsets, visibleArea, onViewportChange } from './viewport.js';
 
 // ── 무대 배치 (논리 좌표) ─────────────────────────────────
 // 가로(태블릿·PC·가로 폰): 1280×800 한 줄 무대 — 기계 · 고양이 · 카운터 · 손님
@@ -106,18 +107,7 @@ class Game {
     this.cat = new Actor('nyang', CAT_HOME, FLOOR, { facing: 'right', speed: 300 });
 
     this.bindUI();
-    const refit = () => this.fit();
-    window.addEventListener('resize', refit);
-    window.addEventListener('orientationchange', () => setTimeout(refit, 250));
-    if (window.visualViewport) {
-      window.visualViewport.addEventListener('resize', refit);
-      window.visualViewport.addEventListener('scroll', refit);
-    }
-    // 일부 모바일 브라우저는 처음 크기를 늦게 알려 준다
-    window.addEventListener('load', refit);
-    window.addEventListener('pageshow', refit);
-    setTimeout(refit, 300);
-    setTimeout(refit, 1200);
+    onViewportChange(() => this.fit());
     this.renderCoins();
     this.showMenu();
 
@@ -150,10 +140,8 @@ class Game {
   // ── 화면 맞춤 ──────────────────────────────────────────
   // 화면 크기·방향에 맞춰 무대를 고르고 확대/축소한다 (노치 등 안전 영역 제외)
   fit() {
-    const cs = getComputedStyle(document.documentElement);
-    const inset = (n) => parseFloat(cs.getPropertyValue(n)) || 0;
-    const l = inset('--sal'), r = inset('--sar'), t = inset('--sat'), b = inset('--sab');
-    const area = this.visibleArea();
+    const { l, r, t, b } = safeInsets();
+    const area = visibleArea();
     const vw = Math.max(1, area.w - l - r);
     const vh = Math.max(1, area.h - t - b);
 
@@ -188,25 +176,6 @@ class Game {
     this.ctx.imageSmoothingEnabled = true;
     this.stage.classList.add('ready');
     if (this.debugBox) this.showDebug(area, s);
-  }
-
-  // 실제로 눈에 보이는 영역 (CSS px, 페이지 기준 좌표).
-  // 삼성 인터넷 등은 레이아웃 뷰포트를 보이는 화면보다 크게 알려 줄 때가 있어서
-  // 고정 요소(body)의 실제 크기·visualViewport·innerWidth 중 가장 작은 값을 쓴다.
-  visibleArea() {
-    const de = document.documentElement;
-    const br = document.body.getBoundingClientRect();
-    const ws = [br.width, de.clientWidth, window.innerWidth].filter((v) => v > 0);
-    const hs = [br.height, de.clientHeight, window.innerHeight].filter((v) => v > 0);
-    let w = Math.min(...ws), h = Math.min(...hs), x = 0, y = 0;
-    const vv = window.visualViewport;
-    if (vv && vv.width > 0 && vv.height > 0) {
-      w = Math.min(w, vv.width);
-      h = Math.min(h, vv.height);
-      x = vv.offsetLeft || 0;
-      y = vv.offsetTop || 0;
-    }
-    return { w, h, x, y };
   }
 
   showDebug(area, s) {
@@ -366,6 +335,7 @@ class Game {
     $('#menu').hidden = false;
     $('#result').hidden = true;
     $('#btn-home').hidden = true;
+    $('#btn-games').hidden = false;
     $('#dots').hidden = true;
     $('#order').hidden = true;
     $('#answers').hidden = true;
@@ -399,6 +369,7 @@ class Game {
     $('#menu').hidden = true;
     $('#result').hidden = true;
     $('#btn-home').hidden = false;
+    $('#btn-games').hidden = true;
     $('#dots').hidden = false;
     this.renderDots();
     try {

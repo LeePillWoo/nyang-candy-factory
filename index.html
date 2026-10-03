@@ -5,99 +5,151 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
   <meta name="theme-color" content="#ffe3ea">
   <meta name="apple-mobile-web-app-capable" content="yes">
-  <title>냥냥 사탕 공장</title>
+  <title>냥냥 수학 놀이터</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=5">
+  <style>
+    :root {
+      --ink: #4a3434;
+      --pink: #ff8fab;
+      --sky: #7cc8f8;
+      --lemon: #ffd65c;
+      --cream: #fff8ef;
+      --font: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+    }
+    * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      min-height: 100dvh;
+      font-family: var(--font);
+      color: var(--ink);
+      background:
+        radial-gradient(circle at 12% 18%, #fff 0 6px, transparent 7px) 0 0 / 120px 120px,
+        linear-gradient(180deg, #ffe3ea 0%, #ffeef3 55%, #dff3ff 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: max(20px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(24px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    header { width: min(980px, 100%); display: flex; align-items: center; justify-content: flex-end; }
+    .coins {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: #fff; border: 4px solid var(--ink); border-radius: 20px;
+      box-shadow: 0 5px 0 var(--ink);
+      padding: 6px 16px 6px 10px; font-size: 26px;
+    }
+    .coin { width: 28px; height: 28px; border-radius: 50%; border: 4px solid var(--ink);
+      background: radial-gradient(circle at 35% 35%, #fff4b0 0 22%, #ffd23f 23% 100%); }
+    h1 {
+      margin: 10px 0 2px;
+      font-size: clamp(40px, 9vw, 72px);
+      font-weight: normal;
+      color: #ff5c8a;
+      -webkit-text-stroke: 3px var(--ink);
+      paint-order: stroke fill;
+      text-shadow: 0 5px 0 var(--ink);
+      text-align: center;
+      text-wrap: balance;
+    }
+    h1 span { color: var(--lemon); }
+    .sub { font-size: clamp(20px, 4.5vw, 30px); margin: 10px 0 24px; text-align: center; }
+    .cards {
+      width: min(980px, 100%);
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+      gap: clamp(18px, 4vw, 34px);
+    }
+    .card {
+      display: flex; flex-direction: column; align-items: center;
+      text-decoration: none; color: var(--ink);
+      border: 6px solid var(--ink);
+      border-radius: 36px;
+      box-shadow: 0 10px 0 var(--ink);
+      padding: 22px 20px 24px;
+      transition: transform .08s, box-shadow .08s;
+      min-width: 0;
+    }
+    .card:active { transform: translateY(8px); box-shadow: 0 2px 0 var(--ink); }
+    .card:focus-visible { outline: 5px solid #fff; outline-offset: 4px; }
+    .card.candy { background: linear-gradient(180deg, #ffc9d6, #ff9fb8); }
+    .card.penguin { background: linear-gradient(180deg, #d4efff, #8fd0f7); }
+    .art {
+      width: 100%; max-width: 320px; aspect-ratio: 16 / 10;
+      background: rgba(255, 255, 255, .6);
+      border: 4px solid var(--ink); border-radius: 24px;
+      display: grid; place-items: center;
+      overflow: hidden;
+      position: relative;
+    }
+    .cat {
+      width: 174px; height: 153px;   /* 시트 116×102 칸을 1.5배 */
+      background: url(assets/sprites/cat.png) 0 -459px / 1392px 1224px no-repeat;
+      animation: bob 1.6s ease-in-out infinite;
+    }
+    .candies { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
+    .card h2 { margin: 16px 0 4px; font-size: clamp(32px, 7vw, 44px); font-weight: normal; text-align: center; }
+    .card p { margin: 0; font-size: clamp(18px, 4vw, 24px); text-align: center; }
+    .play {
+      margin-top: 16px;
+      background: #fff; border: 5px solid var(--ink); border-radius: 999px;
+      box-shadow: 0 6px 0 var(--ink);
+      padding: 8px 36px; font-size: 30px;
+    }
+    svg.peng { width: 70%; height: auto; animation: bob 1s ease-in-out infinite; }
+    @keyframes bob { 50% { transform: translateY(-8px); } }
+    @media (prefers-reduced-motion: reduce) { .cat, svg.peng { animation: none; } }
+  </style>
 </head>
 <body>
-  <div id="stage">
-    <canvas id="scene"></canvas>
+  <header>
+    <div class="coins" aria-label="모은 코인"><span class="coin"></span><b id="coin-count">0</b></div>
+  </header>
+  <h1><span>냥냥</span> 수학 놀이터</h1>
+  <p class="sub">어떤 게임을 할까?</p>
 
-    <!-- 상단 HUD -->
-    <div id="hud">
-      <button id="btn-home" class="chip" aria-label="처음으로" hidden>🏠</button>
-      <button id="btn-sound" class="chip" aria-label="소리">🔊</button>
-      <div id="dots" hidden></div>
-      <div id="coins" class="chip coins"><span class="coin"></span><b id="coin-count">0</b></div>
-    </div>
+  <main class="cards">
+    <a class="card candy" href="candy.html">
+      <div class="art"><div class="cat" role="img" aria-label="고양이 냥이"></div><div class="candies">🍬🍭🍬</div></div>
+      <h2>냥냥 사탕 공장</h2>
+      <p>사탕을 담아서 손님에게 배달해요</p>
+      <span class="play">시작!</span>
+    </a>
 
-    <!-- 손님 주문서 -->
-    <div id="order" hidden>
-      <p class="order-text"></p>
-      <p class="order-expr"></p>
-      <p class="order-q"></p>
-      <div class="order-progress"></div>
-    </div>
-
-    <!-- 아래쪽 안내 -->
-    <div id="tip" hidden></div>
-
-    <!-- 큰 수 풀이 보드 (난이도 2~4 오답 힌트) -->
-    <div id="work" hidden>
-      <p class="work-title">차근차근 풀어 볼까?</p>
-      <div class="work-body"></div>
-      <p class="work-note"></p>
-    </div>
-
-    <!-- 3지선다 -->
-    <div id="answers" hidden></div>
-
-    <!-- 시작 화면 -->
-    <section id="menu" class="screen">
-      <div class="panel">
-        <h1 class="title"><span>냥냥</span> 사탕 공장</h1>
-        <p class="sub">손님이 원하는 사탕을 담아 주세요!</p>
-        <!-- 난이도: 칸 모양으로 자릿수를 보여 줌 (글을 못 읽어도 고를 수 있게) -->
-        <div class="diffs" role="radiogroup" aria-label="난이도">
-          <button class="diff" data-diff="1" aria-checked="true"><span class="boxes"><i></i><b></b><i></i></span><small>한 자리</small></button>
-          <button class="diff" data-diff="2" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i></span><small>두 자리·한 자리</small></button>
-          <button class="diff" data-diff="3" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i><i></i></span><small>두 자리·두 자리</small></button>
-          <button class="diff" data-diff="4" aria-checked="false"><span class="boxes"><i></i><i></i><i></i><b></b><i></i><i></i><i></i></span><small>세 자리·세 자리</small></button>
-        </div>
-        <div class="levels" role="radiogroup" aria-label="푸는 방법">
-          <button class="pill" data-level="picture" aria-checked="true">🍬 그림으로 세기</button>
-          <button class="pill" data-level="number" aria-checked="false">🔢 숫자로 풀기</button>
-        </div>
-        <p class="big-note">큰 수는 숫자로 풀어요 · 틀리면 차근차근 풀이를 보여 줘요</p>
-        <div class="modes">
-          <button class="btn mode add" data-mode="add"><span class="sign">+</span><span>덧셈</span></button>
-          <button class="btn mode sub" data-mode="sub"><span class="sign">−</span><span>뺄셈</span></button>
-          <button class="btn mode mul" data-mode="mul"><span class="sign">×</span><span>곱셈</span></button>
-          <button class="btn mode div" data-mode="div"><span class="sign">÷</span><span>나눗셈</span></button>
-          <button class="btn mode ten" data-mode="ten"><span class="sign">10</span><span>10 만들기</span></button>
-        </div>
+    <a class="card penguin" href="penguin.html">
+      <div class="art">
+        <svg class="peng" viewBox="0 0 320 200" role="img" aria-label="달리는 펭귄">
+          <path d="M0 140 Q80 120 160 128 T320 130 V200 H0 Z" fill="#fff" stroke="#4a3434" stroke-width="5"/>
+          <path d="M20 128 L60 70 L95 128 M210 128 L255 60 L300 128" fill="#e8f6ff" stroke="#4a3434" stroke-width="5" stroke-linejoin="round"/>
+          <g stroke="#4a3434" stroke-width="5" stroke-linejoin="round">
+            <ellipse cx="146" cy="172" rx="16" ry="8" fill="#ffa53c"/>
+            <ellipse cx="178" cy="172" rx="16" ry="8" fill="#ffa53c"/>
+            <ellipse cx="162" cy="118" rx="44" ry="54" fill="#2f3f5f"/>
+            <ellipse cx="114" cy="112" rx="11" ry="28" fill="#2f3f5f" transform="rotate(30 114 112)"/>
+            <ellipse cx="210" cy="112" rx="11" ry="28" fill="#2f3f5f" transform="rotate(-30 210 112)"/>
+            <ellipse cx="162" cy="128" rx="30" ry="38" fill="#fff"/>
+            <circle cx="162" cy="66" r="34" fill="#2f3f5f"/>
+            <path d="M136 70 Q148 52 162 64 Q176 52 188 70 Q186 90 162 92 Q138 90 136 70 Z" fill="#fff"/>
+            <path d="M154 78 L170 78 L162 88 Z" fill="#ffa53c"/>
+            <path d="M132 98 H192 V108 H132 Z" fill="#ff5c7a"/>
+          </g>
+          <circle cx="152" cy="72" r="4" fill="#4a3434"/><circle cx="172" cy="72" r="4" fill="#4a3434"/>
+          <circle cx="144" cy="82" r="5" fill="#ff9fb2" opacity=".7"/><circle cx="180" cy="82" r="5" fill="#ff9fb2" opacity=".7"/>
+          <g fill="#ffa53c" stroke="#4a3434" stroke-width="4"><path d="M250 150 q14 -12 28 0 q-14 12 -28 0 z M278 150 l10 -8 v16 z"/></g>
+        </svg>
       </div>
-    </section>
+      <h2>펭귄 남극탐험</h2>
+      <p>정답 깃발이 있는 길로 달려요</p>
+      <span class="play">시작!</span>
+    </a>
+  </main>
 
-    <!-- 결과 화면 -->
-    <section id="result" class="screen" hidden>
-      <div class="panel">
-        <h2 class="title small">오늘 영업 끝!</h2>
-        <div class="stars"></div>
-        <p class="earned"></p>
-        <div class="row">
-          <button class="btn go again">한 번 더!</button>
-          <button class="btn go home">처음으로</button>
-        </div>
-      </div>
-    </section>
-  </div>
-
-  <!-- 배포할 때 v 값을 올리면 모든 파일이 한꺼번에 새로 받아진다 (캐시에서 옛 파일과 섞이지 않게) -->
-  <script type="importmap">
-  {
-    "imports": {
-      "./src/sprites.js": "./src/sprites.js?v=5",
-      "./src/characters.js": "./src/characters.js?v=5",
-      "./src/actor.js": "./src/actor.js?v=5",
-      "./src/audio.js": "./src/audio.js?v=5",
-      "./src/problems.js": "./src/problems.js?v=5",
-      "./src/work.js": "./src/work.js?v=5"
-    }
-  }
+  <script>
+    try { document.getElementById('coin-count').textContent = JSON.parse(localStorage.getItem('nyang.coins')) || 0; } catch (e) { /* 저장소 없음 */ }
   </script>
-  <script type="module" src="src/game.js?v=5"></script>
 </body>
 </html>
