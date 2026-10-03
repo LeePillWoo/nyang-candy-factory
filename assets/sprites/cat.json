@@ -1,0 +1,47 @@
+{
+  "src": "cat.png",
+  "frameW": 116,
+  "frameH": 102,
+  "anims": {
+    "walk": {
+      "row": 0,
+      "frames": 8,
+      "fps": 12.0
+    },
+    "run": {
+      "row": 1,
+      "frames": 8,
+      "fps": 14.0
+    },
+    "jump": {
+      "row": 2,
+      "frames": 8,
+      "fps": 8
+    },
+    "idle": {
+      "row": 3,
+      "frames": 8,
+      "fps": 4.0
+    },
+    "groom": {
+      "row": 4,
+      "frames": 8,
+      "fps": 8
+    },
+    "sleep": {
+      "row": 5,
+      "frames": 8,
+      "fps": 8
+    },
+    "face": {
+      "row": 6,
+      "frames": 8,
+      "fps": 8
+    },
+    "play": {
+      "row": 7,
+      "frames": 8,
+      "fps": 8
+    }
+  }
+}
