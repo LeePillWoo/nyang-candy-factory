@@ -4,6 +4,7 @@ import { Actor, wait } from './actor.js';
 import { CUSTOMER_KEYS, OUTLINE } from './characters.js';
 import { sfx, speak, unlockAudio, isMuted, setMuted } from './audio.js';
 import { makeProblemSet, orderText, questionText } from './problems.js';
+import { solutionSteps } from './work.js';
 
 // ── 무대 배치 (논리 좌표) ─────────────────────────────────
 // 가로(태블릿·PC·가로 폰): 1280×800 한 줄 무대 — 기계 · 고양이 · 카운터 · 손님
@@ -52,7 +53,7 @@ const CANDY = {
 };
 const BAG = { pink: '#ffc9d6', purple: '#dccbff', kraft: '#f1d3a6', mint: '#c6f0dc', sky: '#c9e8ff', lemon: '#fff0b3' };
 const BAG_CYCLE = [BAG.kraft, BAG.mint, BAG.sky, BAG.pink, BAG.lemon];
-const OP_WORD = { add: '더하기', sub: '빼기', mul: '곱하기', div: '나누기' };
+const OP_WORD = { add: '더하기', sub: '빼기', mul: '곱하기', div: '나누기', ten: '더하기' };
 
 const ABORT = Symbol('abort');
 
@@ -91,6 +92,7 @@ class Game {
     this.token = 0;
     this.coins = store.load('nyang.coins', 0);
     this.level = store.load('nyang.level', 'picture');
+    this.diff = store.load('nyang.diff', 1);
 
     this.customer = null;
     this.resetScene();
@@ -263,6 +265,13 @@ class Game {
     }));
     this.renderLevel();
 
+    document.querySelectorAll('.diff[data-diff]').forEach((b) => b.addEventListener('click', () => {
+      sfx.tap();
+      this.diff = Number(b.dataset.diff);
+      store.save('nyang.diff', this.diff);
+      this.renderLevel();
+    }));
+
     document.querySelectorAll('.mode[data-mode]').forEach((b) => b.addEventListener('click', () => {
       sfx.tap();
       this.run(b.dataset.mode, this.level);
@@ -280,6 +289,9 @@ class Game {
 
   renderLevel() {
     document.querySelectorAll('.pill[data-level]').forEach((b) => b.setAttribute('aria-checked', String(b.dataset.level === this.level)));
+    document.querySelectorAll('.diff[data-diff]').forEach((b) => b.setAttribute('aria-checked', String(Number(b.dataset.diff) === this.diff)));
+    // 큰 수는 숫자로만 풀기 때문에 그림/숫자 선택은 1단계(와 10 만들기)에만 쓰인다
+    $('#menu').classList.toggle('big-numbers', this.diff > 1);
   }
 
   renderCoins() { $('#coin-count').textContent = this.coins; }
@@ -323,7 +335,11 @@ class Game {
   showOrder(p) {
     const o = $('#order');
     o.querySelector('.order-text').textContent = orderText(p);
-    o.querySelector('.order-expr').innerHTML = `${p.expr} = <span class="q">?</span>`;
+    const ex = o.querySelector('.order-expr');
+    ex.innerHTML = `${p.left}<span class="q">?</span>${p.right}`;
+    const len = (p.left + p.right).length + String(p.answer).length;
+    ex.classList.toggle('long', len > 11 && len <= 15);
+    ex.classList.toggle('xlong', len > 15);
     o.querySelector('.order-q').textContent = '';
     const prog = o.querySelector('.order-progress');
     prog.innerHTML = '';
@@ -353,6 +369,7 @@ class Game {
     $('#dots').hidden = true;
     $('#order').hidden = true;
     $('#answers').hidden = true;
+    this.hideWork();
     this.setTip(null);
   }
 
@@ -372,7 +389,7 @@ class Game {
     const token = this.token;
     this.mode = mode;
     this.level = level;
-    this.problems = makeProblemSet(mode, level, ROUNDS);
+    this.problems = makeProblemSet(mode, level, ROUNDS, this.diff);
     this.results = [];
     this.earned = 0;
     this.round = 0;
@@ -406,7 +423,8 @@ class Game {
     this.resetScene();
     this.problem = p;
     this.firstTry = true;
-    this.showMachine = p.mode === 'add' || p.mode === 'mul';
+    this.showMachine = p.mode === 'add' || p.mode === 'mul' || p.mode === 'ten';
+    this.hideWork();
 
     // 손님 등장
     const cust = this.customer = new Actor(customerKey, W + 140, CFLOOR, { facing: 'left', speed: 330 });
@@ -414,7 +432,8 @@ class Game {
     sfx.hop();
     await this.step(cust.hop(30));
     this.showOrder(p);
-    speak(p.level === 'number' ? `${p.a} ${OP_WORD[p.mode]} ${p.b}는?` : orderText(p));
+    if (p.mode === 'ten' && p.level === 'number') speak(`${p.a} 더하기 몇은 10?`);
+    else speak(p.level === 'number' ? `${p.a} ${OP_WORD[p.mode]} ${p.b}는?` : orderText(p));
     await this.sleep(0.5);
 
     if (p.level === 'picture') {
@@ -456,6 +475,13 @@ class Game {
       bag.slots.forEach((s, i) => {
         s.candy = { color: pick(CANDY.palette), born: born + i * 0.03 };
         if (filled && i >= p.a - p.b) s.candy.ghost = true;
+      });
+    } else if (p.mode === 'ten') {
+      // 10칸 봉지: 앞 a칸은 이미 딸기 사탕, 나머지를 기계로 포도 사탕 채우기
+      this.layoutBags([{ n: 10, cols: 5, rows: 2, color: BAG.pink, candy: CANDY.grape }], 0);
+      this.bags[0].slots.forEach((s, i) => {
+        if (i < p.a) { s.reserved = true; s.candy = { color: CANDY.strawberry, born: born + i * 0.04 }; }
+        else this.fillOrder.push(s);
       });
     } else if (p.mode === 'div') {
       const each = p.a / p.b;
@@ -549,6 +575,7 @@ class Game {
       mul: '👆 사탕 기계를 눌러요!',
       sub: `👆 사탕을 눌러서 ${p.b}개 주세요!`,
       div: '👆 쟁반을 눌러 나눠 담아요!',
+      ten: '👆 기계를 눌러 10칸을 꽉 채워요!',
     };
     this.setTip(tips[p.mode]);
     this.lastTap = this.time;
@@ -638,7 +665,8 @@ class Game {
     box.classList.remove('locked');
     for (const n of p.choices) {
       const b = document.createElement('button');
-      b.className = 'btn answer';
+      const digitsLen = String(n).length;
+      b.className = 'btn answer' + (digitsLen >= 6 ? ' xlong' : digitsLen >= 4 ? ' long' : '');
       b.textContent = n;
       b.addEventListener('click', () => { sfx.tap(); this.resolveInput(n); });
       box.appendChild(b);
@@ -655,15 +683,20 @@ class Game {
       btnOf(n).classList.add('wrong');
       box.classList.add('locked');
       sfx.oops();
-      this.customer.say('같이 세어 볼까?', 2.2);
+      const big = p.diff > 1;
+      this.customer.say(big ? '같이 풀어 볼까?' : '같이 세어 볼까?', 2.2);
       this.cat.play('sad', 1.4);
-      speak('괜찮아! 같이 세어 볼까?');
+      speak(big ? '괜찮아! 차근차근 같이 풀어 볼까?' : '괜찮아! 같이 세어 볼까?');
       await this.sleep(0.9);
-      if (!this.bags.length) {
-        this.buildScene(p, true);
-        await this.sleep(0.8);
+      if (big) {
+        await this.showWork(p);
+      } else {
+        if (!this.bags.length) {
+          this.buildScene(p, true);
+          await this.sleep(0.8);
+        }
+        await this.countHint(p);
       }
-      await this.countHint(p);
       box.classList.remove('locked');
       speak('다시 골라 볼까?');
     }
@@ -674,7 +707,8 @@ class Game {
     box.classList.add('locked');
     sfx.correct();
     this.burst(W / 2, FLOOR - 60, 26);
-    const reward = this.firstTry ? 3 : 1;
+    // 어려운 단계일수록 코인을 더 준다
+    const reward = (this.firstTry ? 3 : 1) + (p.diff - 1);
     this.earned += reward;
     this.results[this.round] = this.firstTry ? 'star' : 'ok';
     this.renderDots();
@@ -684,15 +718,89 @@ class Game {
     speak(this.firstTry ? '딩동댕! 정답이에요!' : '맞았어요! 잘했어요!');
     this.customer.setAnim('happy');
     this.cat.play('happy', 1.4);
-    $('#order .order-expr').innerHTML = `${p.expr} = <span class="ans">${p.answer}</span>`;
+    $('#order .order-expr').innerHTML = `${p.left}<span class="ans">${p.answer}</span>${p.right}`;
     await this.sleep(1.4);
     box.hidden = true;
+  }
+
+  // ── 큰 수 풀이 보드 ─────────────────────────────────────
+  hideWork() { const w = $('#work'); if (w) w.hidden = true; }
+
+  async showWork(p) {
+    const sol = solutionSteps(p);
+    if (!sol) return;
+    const box = $('#work');
+    const body = box.querySelector('.work-body');
+    const note = box.querySelector('.work-note');
+    body.innerHTML = '';
+    note.textContent = '';
+    box.hidden = false;
+    box.style.animation = 'none'; void box.offsetWidth; box.style.animation = '';
+    if (sol.kind === 'column') await this.playColumn(sol, body, note);
+    else await this.playLines(sol, body, note);
+    await this.sleep(0.6);
+  }
+
+  // 세로셈: 칸 = [부호, 높은 자리 … 일의 자리]
+  async playColumn(sol, body, note) {
+    const w = sol.width;
+    const grid = document.createElement('div');
+    grid.className = 'col-grid';
+    grid.style.gridTemplateColumns = `repeat(${w + 1}, var(--cell))`;
+    const rows = { mark: [], top: [], bottom: [], result: [] };
+    const da = String(sol.a).padStart(w, ' '), db = String(sol.b).padStart(w, ' ');
+    const cell = (cls, text = '') => { const c = document.createElement('div'); c.className = `cell ${cls}`; c.textContent = text; grid.appendChild(c); return c; };
+    cell('mark op');
+    for (let i = 0; i < w; i++) rows.mark.push(cell('mark'));
+    cell('op');
+    for (let i = 0; i < w; i++) rows.top.push(cell('num', da[i].trim()));
+    cell('op', sol.op);
+    for (let i = 0; i < w; i++) rows.bottom.push(cell('num', db[i].trim()));
+    const rule = document.createElement('div');
+    rule.className = 'rule';
+    rule.style.gridColumn = `1 / span ${w + 1}`;
+    grid.appendChild(rule);
+    cell('op');
+    for (let i = 0; i < w; i++) rows.result.push(cell('num result'));
+    body.appendChild(grid);
+
+    const at = (row, place) => rows[row][w - 1 - place];   // 자리(0=일) → 칸
+    await this.sleep(0.6);
+    for (const st of sol.steps) {
+      body.querySelectorAll('.cell.now').forEach((c) => c.classList.remove('now'));
+      for (const row of ['top', 'bottom', 'result']) at(row, st.place)?.classList.add('now');
+      note.textContent = st.note;
+      for (const pl of st.strike || []) at('top', pl)?.classList.add('struck');
+      for (const m of st.marks || []) { const c = at('mark', m.place); if (c) { c.textContent = m.value; c.classList.add('pop'); } }
+      await this.sleep(0.7);
+      const r = at('result', st.place);
+      if (r && st.digit !== null) { r.textContent = st.digit; r.classList.add('pop'); }
+      sfx.count(st.place * 3);
+      await this.sleep(1.1);
+    }
+    body.querySelectorAll('.cell.now').forEach((c) => c.classList.remove('now'));
+    note.textContent = `답은 ${sol.answer}!`;
+  }
+
+  async playLines(sol, body, note) {
+    note.textContent = '';
+    for (let i = 0; i < sol.lines.length; i++) {
+      const ln = sol.lines[i];
+      const d = document.createElement('div');
+      d.className = `line ${ln.kind || ''} pop`;
+      d.textContent = ln.text;
+      body.appendChild(d);
+      sfx.count(i * 2);
+      await this.sleep(ln.kind === 'note' ? 1.2 : 1.3);
+    }
   }
 
   countTargets(p) {
     const all = [];
     if (p.mode === 'div') {
       for (const s of this.bags[0].slots) if (s.candy) all.push(s);
+    } else if (p.mode === 'ten') {
+      for (const s of this.bags[0].slots.slice(p.a)) if (s.candy) all.push(s);   // 더 넣은 사탕만
     } else {
       for (const b of this.bags) for (const s of b.slots) if (s.candy && !s.candy.ghost) all.push(s);
     }
@@ -715,6 +823,7 @@ class Game {
   async deliver() {
     const cat = this.cat, cust = this.customer;
     this.delivering = true;
+    this.hideWork();
     const midX = this.bags.length ? this.bags.reduce((s, b) => s + b.x, 0) / this.bags.length : (TABLE.x0 + TABLE.x1) / 2;
     if (PORTRAIT) {
       // 세로: 손님은 위층 → 고양이가 카운터 아래에서 폴짝, 봉지를 위로 휙 던져 준다

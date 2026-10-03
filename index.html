@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=4">
+  <link rel="stylesheet" href="style.css?v=5">
 </head>
 <body>
   <div id="stage">
@@ -34,6 +34,13 @@
     <!-- 아래쪽 안내 -->
     <div id="tip" hidden></div>
 
+    <!-- 큰 수 풀이 보드 (난이도 2~4 오답 힌트) -->
+    <div id="work" hidden>
+      <p class="work-title">차근차근 풀어 볼까?</p>
+      <div class="work-body"></div>
+      <p class="work-note"></p>
+    </div>
+
     <!-- 3지선다 -->
     <div id="answers" hidden></div>
 
@@ -42,15 +49,24 @@
       <div class="panel">
         <h1 class="title"><span>냥냥</span> 사탕 공장</h1>
         <p class="sub">손님이 원하는 사탕을 담아 주세요!</p>
-        <div class="levels" role="radiogroup">
+        <!-- 난이도: 칸 모양으로 자릿수를 보여 줌 (글을 못 읽어도 고를 수 있게) -->
+        <div class="diffs" role="radiogroup" aria-label="난이도">
+          <button class="diff" data-diff="1" aria-checked="true"><span class="boxes"><i></i><b></b><i></i></span><small>한 자리</small></button>
+          <button class="diff" data-diff="2" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i></span><small>두 자리·한 자리</small></button>
+          <button class="diff" data-diff="3" aria-checked="false"><span class="boxes"><i></i><i></i><b></b><i></i><i></i></span><small>두 자리·두 자리</small></button>
+          <button class="diff" data-diff="4" aria-checked="false"><span class="boxes"><i></i><i></i><i></i><b></b><i></i><i></i><i></i></span><small>세 자리·세 자리</small></button>
+        </div>
+        <div class="levels" role="radiogroup" aria-label="푸는 방법">
           <button class="pill" data-level="picture" aria-checked="true">🍬 그림으로 세기</button>
           <button class="pill" data-level="number" aria-checked="false">🔢 숫자로 풀기</button>
         </div>
+        <p class="big-note">큰 수는 숫자로 풀어요 · 틀리면 차근차근 풀이를 보여 줘요</p>
         <div class="modes">
           <button class="btn mode add" data-mode="add"><span class="sign">+</span><span>덧셈</span></button>
           <button class="btn mode sub" data-mode="sub"><span class="sign">−</span><span>뺄셈</span></button>
           <button class="btn mode mul" data-mode="mul"><span class="sign">×</span><span>곱셈</span></button>
           <button class="btn mode div" data-mode="div"><span class="sign">÷</span><span>나눗셈</span></button>
+          <button class="btn mode ten" data-mode="ten"><span class="sign">10</span><span>10 만들기</span></button>
         </div>
       </div>
     </section>
@@ -73,14 +89,15 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/sprites.js": "./src/sprites.js?v=4",
-      "./src/characters.js": "./src/characters.js?v=4",
-      "./src/actor.js": "./src/actor.js?v=4",
-      "./src/audio.js": "./src/audio.js?v=4",
-      "./src/problems.js": "./src/problems.js?v=4"
+      "./src/sprites.js": "./src/sprites.js?v=5",
+      "./src/characters.js": "./src/characters.js?v=5",
+      "./src/actor.js": "./src/actor.js?v=5",
+      "./src/audio.js": "./src/audio.js?v=5",
+      "./src/problems.js": "./src/problems.js?v=5",
+      "./src/work.js": "./src/work.js?v=5"
     }
   }
   </script>
-  <script type="module" src="src/game.js?v=4"></script>
+  <script type="module" src="src/game.js?v=5"></script>
 </body>
 </html>
