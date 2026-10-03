@@ -16,10 +16,10 @@ const SPEED = 6;              // 달리는 속도 (단위/초)
 const THINK = { 1: 6.5, 2: 6.5, 3: 7, 4: 7 };  // 깃발이 나타나서 펭귄에 닿기까지 시간(초). 문제는 깃발 위 간판에 있어 가까워져야 읽힌다
 const HOLE_RATE = { 1: 0.35, 2: 0.3, 3: 0.25, 4: 0.2 };  // 생기는 물체 중 얼음 구멍 비율 (어려울수록 줄여 계산에 집중)
 const JUMP_TIME = 0.75;
-// 깃발 통과 슬로모션 — 어려울수록 일찍, 더 느리게 (생각할 시간). 실제로 느린 시간 ≈ NEAR / (6 × SLOW)초: 1.7 · 3 · 4.5 · 6.7초
-const SLOW = { 1: 0.3, 2: 0.25, 3: 0.22, 4: 0.2 };        // 배속
-const SLOW_NEAR = { 1: 3, 2: 4.5, 3: 6, 4: 8 };          // 깃발이 이만큼(깊이) 가까워지면 느려지기 시작
-const SAY_NEAR = 14;          // 간판이 읽힐 만큼 가까워지면 문제를 읽어 준다
+// 깃발 통과 슬로모션 — 어려울수록 일찍, 더 느리게 (생각할 시간). 실제로 느린 시간 ≈ NEAR / (6 × SLOW)초: 3 · 5.4 · 8.3 · 12초
+const SLOW = { 1: 0.25, 2: 0.2, 3: 0.16, 4: 0.13 };      // 배속
+const SLOW_NEAR = { 1: 4.5, 2: 6.5, 3: 8, 4: 9.5 };      // 깃발이 이만큼(깊이) 가까워지면 느려지기 시작
+const SAY_NEAR = 16;          // 간판이 읽힐 만큼 가까워지면 문제를 읽어 준다
 const SLOW_HOLD = 0.6;        // 통과 뒤 슬로모션을 유지하는 시간(실제 초)
 const OP_WORD = { add: '더하기', sub: '빼기', mul: '곱하기', div: '나누기', ten: '더하기' };
 
@@ -374,6 +374,7 @@ class PenguinGame {
     if (this.slowHold > 0) this.slowHold -= dt;
     const target = near || this.slowHold > 0 ? SLOW[this.diff] : 1;
     this.timeScale += (target - this.timeScale) * Math.min(1, dt * (target < 1 ? 8 : 3));
+    const realDt = dt;
     dt *= this.timeScale;
 
     this.time += dt;
@@ -390,7 +391,8 @@ class PenguinGame {
     if (this.state !== 'run') { this.moveDecor(0); return; }
 
     // 펭귄 좌우 이동 · 점프 · 빠짐
-    this.px += clamp(this.lane - this.px, -7 * dt, 7 * dt);
+    // 좌우 이동은 슬로모션이어도 실제 시간으로 (버튼 반응이 굼뜨지 않게)
+    this.px += clamp(this.lane - this.px, -7 * realDt, 7 * realDt);
     if (this.jumpT !== null) { this.jumpT += dt; if (this.jumpT >= JUMP_TIME) this.jumpT = null; }
     if (this.fallT > 0) {
       this.fallT -= dt;
