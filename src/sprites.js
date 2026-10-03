@@ -27,7 +27,9 @@ export function loadSprites() {
     const img = new Image();
     img.onload = () => { sheet.image = img; resolve(); };
     img.onerror = () => { console.warn(`스프라이트 로드 실패: ${name}`); resolve(); };
-    img.src = SPRITE_DIR + sheet.src;
+    // 단일 HTML 빌드(tools/build_single.py)에서는 data URI로 박아 넣은 이미지를 쓴다
+    const inline = window.NYANG_INLINE_SPRITES && window.NYANG_INLINE_SPRITES[sheet.src];
+    img.src = inline || SPRITE_DIR + sheet.src;
   })));
 }
 

@@ -15,6 +15,14 @@ python -m http.server 8000
 브라우저에서 <http://localhost:8000> 을 엽니다. 같은 와이파이의 태블릿에서 `http://<내 PC IP>:8000` 으로 접속해도 됩니다.
 (ES 모듈을 쓰기 때문에 `index.html` 을 파일로 바로 열면 동작하지 않아요.)
 
+### 파일 하나로 배포하기
+
+```bash
+python tools/build_single.py        # → dist/nyang-candy-factory.html (JS·CSS·스프라이트 모두 포함)
+```
+
+만들어진 HTML 하나만 아무 정적 호스팅(GitHub Pages, Netlify 등)에 올리거나, 파일로 바로 열어도 동작합니다.
+
 ## 게임 방법
 
 | 모드 | 그림으로 세기 | 아이가 하는 일 | 질문 |
