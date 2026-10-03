@@ -22,6 +22,9 @@ html, body {
   height: 100%;
   overflow: hidden;
   overscroll-behavior: none;
+  /* 삼성 인터넷 등이 글자만 따로 키우지 않게 */
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
   background: #ffe3ea;
   font-family: var(--font);
   color: var(--ink);
@@ -297,3 +300,13 @@ button.chip:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink);
 }
 #stage.portrait #menu .panel { margin-left: 0; margin-top: -40px; }
 #stage.portrait .order-expr { font-size: 56px; }
+
+#debug {
+  position: fixed; left: 4px; top: 4px; z-index: 99;
+  max-width: calc(100% - 8px);
+  margin: 0; padding: 6px 8px;
+  background: rgba(0, 0, 0, .75); color: #fff;
+  font: 11px/1.35 monospace;
+  white-space: pre-wrap; word-break: break-all;
+  pointer-events: none;
+}

@@ -94,6 +94,12 @@ class Game {
 
     this.customer = null;
     this.resetScene();
+    // 주소 끝에 ?debug 를 붙이면 화면 크기 정보를 보여 준다 (기기별 문제 확인용)
+    if (/[?&]debug\b/.test(location.search)) {
+      this.debugBox = document.createElement('pre');
+      this.debugBox.id = 'debug';
+      document.body.appendChild(this.debugBox);
+    }
     this.fit();
     this.cat = new Actor('nyang', CAT_HOME, FLOOR, { facing: 'right', speed: 300 });
 
@@ -101,7 +107,10 @@ class Game {
     const refit = () => this.fit();
     window.addEventListener('resize', refit);
     window.addEventListener('orientationchange', () => setTimeout(refit, 250));
-    if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', refit);
+      window.visualViewport.addEventListener('scroll', refit);
+    }
     // 일부 모바일 브라우저는 처음 크기를 늦게 알려 준다
     window.addEventListener('load', refit);
     window.addEventListener('pageshow', refit);
@@ -142,10 +151,9 @@ class Game {
     const cs = getComputedStyle(document.documentElement);
     const inset = (n) => parseFloat(cs.getPropertyValue(n)) || 0;
     const l = inset('--sal'), r = inset('--sar'), t = inset('--sat'), b = inset('--sab');
-    // 레이아웃 뷰포트 크기 (손가락 확대와 무관), 없으면 innerWidth
-    const de = document.documentElement;
-    const vw = Math.max(1, (de.clientWidth || window.innerWidth) - l - r);
-    const vh = Math.max(1, (de.clientHeight || window.innerHeight) - t - b);
+    const area = this.visibleArea();
+    const vw = Math.max(1, area.w - l - r);
+    const vh = Math.max(1, area.h - t - b);
 
     const portrait = vh > vw;
     const height = portrait
@@ -163,13 +171,55 @@ class Game {
 
     const s = Math.min(vw / W, vh / H);
     this.scale = s;
-    this.stage.style.transform = `translate(${l + (vw - W * s) / 2}px, ${t + (vh - H * s) / 2}px) scale(${s})`;
+    const x = area.x + l + (vw - W * s) / 2;
+    const y = area.y + t + (vh - H * s) / 2;
+    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${s})`;
+
+    // 캔버스 해상도는 바뀔 때만 다시 잡는다 (스크롤 이벤트마다 지우지 않게)
     const k = Math.min(2.5, Math.max(1, s * (window.devicePixelRatio || 1)));
-    this.canvas.width = Math.round(W * k);
-    this.canvas.height = Math.round(H * k);
+    const cw = Math.round(W * k), ch = Math.round(H * k);
+    if (this.canvas.width !== cw || this.canvas.height !== ch) {
+      this.canvas.width = cw;
+      this.canvas.height = ch;
+    }
     this.ctx.setTransform(k, 0, 0, k, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
     this.stage.classList.add('ready');
+    if (this.debugBox) this.showDebug(area, s);
+  }
+
+  // 실제로 눈에 보이는 영역 (CSS px, 페이지 기준 좌표).
+  // 삼성 인터넷 등은 레이아웃 뷰포트를 보이는 화면보다 크게 알려 줄 때가 있어서
+  // 고정 요소(body)의 실제 크기·visualViewport·innerWidth 중 가장 작은 값을 쓴다.
+  visibleArea() {
+    const de = document.documentElement;
+    const br = document.body.getBoundingClientRect();
+    const ws = [br.width, de.clientWidth, window.innerWidth].filter((v) => v > 0);
+    const hs = [br.height, de.clientHeight, window.innerHeight].filter((v) => v > 0);
+    let w = Math.min(...ws), h = Math.min(...hs), x = 0, y = 0;
+    const vv = window.visualViewport;
+    if (vv && vv.width > 0 && vv.height > 0) {
+      w = Math.min(w, vv.width);
+      h = Math.min(h, vv.height);
+      x = vv.offsetLeft || 0;
+      y = vv.offsetTop || 0;
+    }
+    return { w, h, x, y };
+  }
+
+  showDebug(area, s) {
+    const vv = window.visualViewport;
+    const br = document.body.getBoundingClientRect();
+    const f = (n) => (Math.round(n * 100) / 100);
+    this.debugBox.textContent = [
+      `inner ${innerWidth}×${innerHeight}`,
+      `client ${document.documentElement.clientWidth}×${document.documentElement.clientHeight}`,
+      `body ${f(br.width)}×${f(br.height)}`,
+      vv ? `vv ${f(vv.width)}×${f(vv.height)} s${f(vv.scale)} @${f(vv.offsetLeft)},${f(vv.offsetTop)}` : 'vv 없음',
+      `screen ${screen.width}×${screen.height} dpr ${f(devicePixelRatio)}`,
+      `use ${f(area.w)}×${f(area.h)} → 무대 ${W}×${H} ×${f(s)}`,
+      navigator.userAgent,
+    ].join('\n');
   }
 
   // 방향이 바뀌면 진행 중인 장면을 새 배치로 옮긴다
