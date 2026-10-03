@@ -36,7 +36,7 @@
       user-select: none;
       -webkit-user-select: none;
     }
-    header { width: min(980px, 100%); display: flex; align-items: center; justify-content: flex-end; }
+    header { width: min(1180px, 100%); display: flex; align-items: center; justify-content: flex-end; }
     .coins {
       display: inline-flex; align-items: center; gap: 8px;
       background: #fff; border: 4px solid var(--ink); border-radius: 20px;
@@ -59,9 +59,9 @@
     h1 span { color: var(--lemon); }
     .sub { font-size: clamp(20px, 4.5vw, 30px); margin: 10px 0 24px; text-align: center; }
     .cards {
-      width: min(980px, 100%);
+      width: min(1180px, 100%);
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
       gap: clamp(18px, 4vw, 34px);
     }
     .card {
@@ -78,6 +78,7 @@
     .card:focus-visible { outline: 5px solid #fff; outline-offset: 4px; }
     .card.candy { background: linear-gradient(180deg, #ffc9d6, #ff9fb8); }
     .card.penguin { background: linear-gradient(180deg, #d4efff, #8fd0f7); }
+    .card.kitchen { background: linear-gradient(180deg, #ffe7b3, #ffc46b); }
     .art {
       width: 100%; max-width: 320px; aspect-ratio: 16 / 10;
       background: rgba(255, 255, 255, .6);
@@ -93,7 +94,7 @@
     }
     .candies { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
     .card h2 { margin: 16px 0 4px; font-size: clamp(32px, 7vw, 44px); font-weight: normal; text-align: center; }
-    .card p { margin: 0; font-size: clamp(18px, 4vw, 24px); text-align: center; }
+    .card p { margin: 0; font-size: clamp(18px, 4vw, 24px); text-align: center; text-wrap: balance; word-break: keep-all; }
     .play {
       margin-top: 16px;
       background: #fff; border: 5px solid var(--ink); border-radius: 999px;
@@ -107,8 +108,16 @@
     }
     .snow { position: absolute; inset: auto 0 10px; text-align: center; font-size: 26px; letter-spacing: 6px; }
     .card.penguin .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 60%, #ffffff 60%); }
+    .chef-cat {
+      width: 149px; height: 163px;   /* 고양이 시트 만세(3행 3번)를 0.9배 */
+      background: url(assets/sprites/cat.png?v=8) -445.5px -325.8px / 891px 652px no-repeat;
+      animation: bob 1.2s ease-in-out infinite;
+    }
+    .dumplings { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
+    .card.kitchen .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 62%, #f3d9ad 62%); }
+    .new { position: absolute; top: 10px; right: 10px; background: #ff5c8a; color: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 2px 10px; font-size: 18px; }
     @keyframes bob { 50% { transform: translateY(-8px); } }
-    @media (prefers-reduced-motion: reduce) { .cat, .peng { animation: none; } }
+    @media (prefers-reduced-motion: reduce) { .cat, .peng, .chef-cat { animation: none; } }
   </style>
 </head>
 <body>
@@ -133,6 +142,17 @@
       </div>
       <h2>펭귄 남극탐험</h2>
       <p>정답 깃발이 있는 길로 달려요</p>
+      <span class="play">시작!</span>
+    </a>
+
+    <a class="card kitchen" href="kitchen.html">
+      <div class="art">
+        <div class="chef-cat" role="img" aria-label="신난 고양이 요리사"></div>
+        <div class="dumplings">🥟 🍳 🥟</div>
+        <span class="new">NEW · 2인</span>
+      </div>
+      <h2>냥냥 주방</h2>
+      <p>주문대로 만두를 구워요 (1인 · 2인)</p>
       <span class="play">시작!</span>
     </a>
   </main>
