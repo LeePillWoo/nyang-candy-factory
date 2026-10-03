@@ -339,7 +339,6 @@ class Game {
     $('#menu').hidden = false;
     $('#result').hidden = true;
     $('#btn-home').hidden = true;
-    $('#btn-games').hidden = false;
     $('#dots').hidden = true;
     $('#order').hidden = true;
     $('#answers').hidden = true;
@@ -375,7 +374,6 @@ class Game {
     $('#menu').hidden = true;
     $('#result').hidden = true;
     $('#btn-home').hidden = false;
-    $('#btn-games').hidden = true;
     $('#dots').hidden = false;
     this.renderDots();
     try {
