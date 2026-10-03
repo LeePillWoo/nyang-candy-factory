@@ -14,7 +14,7 @@ import os
 import re
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ORDER = ['sprites', 'characters', 'actor', 'audio', 'problems', 'game']  # 의존 순서
+ORDER = ['sprites', 'characters', 'actor', 'audio', 'problems', 'work', 'game']  # 의존 순서
 
 IMPORT_RE = re.compile(r"^import\s*\{([^}]*)\}\s*from\s*'\./(\w+)\.js';\s*$", re.M)
 EXPORT_RE = re.compile(r"^export\s+(?:const|let|function|class)\s+(\w+)", re.M)
