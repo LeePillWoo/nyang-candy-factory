@@ -5,6 +5,7 @@ import { CUSTOMER_KEYS, FEATURED_CUSTOMERS, OUTLINE } from './characters.js';
 import { sfx, speak, unlockAudio, isMuted, setMuted } from './audio.js';
 import { makeProblemSet, orderText, questionText } from './problems.js';
 import { solutionSteps } from './work.js';
+import { Blocks } from './blocks.js';
 import { safeInsets, visibleArea, onViewportChange } from './viewport.js';
 
 // ── 무대 배치 (논리 좌표) ─────────────────────────────────
@@ -99,6 +100,7 @@ class Game {
     this.resetScene();
     // 주소 끝에 ?debug 를 붙이면 화면 크기 정보를 보여 준다 (기기별 문제 확인용)
     if (/[?&]debug\b/.test(location.search)) {
+      window.__game = this;   // 자동 테스트용
       this.debugBox = document.createElement('pre');
       this.debugBox.id = 'debug';
       document.body.appendChild(this.debugBox);
@@ -135,6 +137,7 @@ class Game {
     this.showMachine = true;
     this.machineWobble = 0;
     this.plusSign = false;
+    this.blocks = null;      // 큰 수 그림 레벨: 사탕 포장 놀이
   }
 
   // ── 화면 맞춤 ──────────────────────────────────────────
@@ -214,6 +217,7 @@ class Game {
     }
     this.positionBags();
     this.positionTray();
+    if (this.blocks) this.blocks.layout();
   }
 
   toStage(e) {
@@ -312,7 +316,7 @@ class Game {
     o.querySelector('.order-q').textContent = '';
     const prog = o.querySelector('.order-progress');
     prog.innerHTML = '';
-    if (p.mode === 'sub' && p.level === 'picture') {
+    if (p.mode === 'sub' && p.level === 'picture' && p.diff === 1) {
       for (let i = 0; i < p.b; i++) prog.appendChild(document.createElement('i'));
     }
     o.hidden = false;
@@ -396,7 +400,8 @@ class Game {
     this.resetScene();
     this.problem = p;
     this.firstTry = true;
-    this.showMachine = p.mode === 'add' || p.mode === 'mul' || p.mode === 'ten';
+    const big = p.diff > 1 && p.level === 'picture';
+    this.showMachine = big ? p.mode === 'mul' : p.mode === 'add' || p.mode === 'mul' || p.mode === 'ten';
     this.hideWork();
 
     // 손님 등장
@@ -409,7 +414,9 @@ class Game {
     else speak(p.level === 'number' ? `${p.a} ${OP_WORD[p.mode]} ${p.b}는?` : orderText(p));
     await this.sleep(0.5);
 
-    if (p.level === 'picture') {
+    if (p.level === 'picture' && p.diff > 1) {
+      await this.doBlocksTask(p);
+    } else if (p.level === 'picture') {
       this.buildScene(p, false);
       await this.doTask(p);
     }
@@ -542,6 +549,39 @@ class Game {
   }
 
   // ── 아이가 직접 하는 단계 ─────────────────────────────
+  // 큰 수: 낱개·막대·상자로 모으고 포장하고 뜯는 놀이 (src/blocks.js)
+  async doBlocksTask(p) {
+    const game = this;
+    let lastSaid = null;
+    const env = {
+      time: () => game.time,
+      table: () => ({ x0: TABLE.x0, x1: TABLE.x1, top: TABLE.top, maxH: PORTRAIT ? TABLE.top - CFLOOR - 40 : 260 }),
+      fly: (x0, y0, x1, y1, draw, onDone, dur) => game.fly(x0, y0, x1, y1, null, onDone, dur, draw),
+      tip: (text, say) => {
+        game.setTip(text);
+        if (say && say !== lastSaid) { lastSaid = say; speak(say); }
+      },
+      done: () => game.resolveInput(true),
+      sfx,
+      drawCandy,
+      catSay: (text) => game.cat.say(text, 1.6),
+      mouth: () => ({ x: game.customer.x - 6, y: CFLOOR - 112 }),
+      customerEat: () => { game.customer.play('eat', 0.8); game.customer.say('냠!', 0.7); },
+      chute: () => ({ x: MACHINE.x + 34, y: FLOOR - 92 }),
+      machineHit: (x, y) => x > MACHINE.x - 95 && x < MACHINE.x + 95 && y > FLOOR - 300 && y < FLOOR,
+      machineHand: () => ({ x: MACHINE.x + 10, y: FLOOR - 190 }),
+      machineTap: () => { game.machineWobble = 1; sfx.machine(); if (!game.cat._hop) game.cat.hop(16, 0.3); },
+    };
+    this.lastTap = this.time;
+    this.interaction = { type: 'blocks' };
+    this.blocks = new Blocks(env, p);
+    if (!this.blocks.finished) await this.waitInput();
+    this.interaction = null;
+    this.handTarget = null;
+    this.setTip(null);
+    await this.sleep(0.35);
+  }
+
   async doTask(p) {
     const tips = {
       add: '👆 사탕 기계를 눌러요!',
@@ -565,6 +605,7 @@ class Game {
     const it = this.interaction;
     if (!it) return;
     this.lastTap = this.time;
+    if (it.type === 'blocks') { this.blocks?.tap(x, y); return; }
     if (it.sent >= it.total) return;
 
     if (it.type === 'machine' && x > MACHINE.x - 95 && x < MACHINE.x + 95 && y > FLOOR - 300 && y < FLOOR) {
@@ -661,7 +702,9 @@ class Game {
       this.cat.play('sad', 1.4);
       speak(big ? '괜찮아! 차근차근 같이 풀어 볼까?' : '괜찮아! 같이 세어 볼까?');
       await this.sleep(0.9);
-      if (big) {
+      if (big && this.blocks) {
+        await this.countBlocks();
+      } else if (big) {
         await this.showWork(p);
       } else {
         if (!this.bags.length) {
@@ -768,6 +811,18 @@ class Game {
     }
   }
 
+  // 큰 수 그림: 상자 100, 200… 막대 210, 220… 낱개 221, 222… 로 뛰어 세기
+  async countBlocks() {
+    this.blocks.clearBadges();
+    const targets = this.blocks.countTargets();
+    for (let i = 0; i < targets.length; i++) {
+      this.blocks.addBadge(targets[i]);
+      sfx.count(Math.min(i, 14));
+      await this.sleep(targets[i].place === 0 ? 0.38 : 0.6);
+    }
+    await this.sleep(0.4);
+  }
+
   countTargets(p) {
     const all = [];
     if (p.mode === 'div') {
@@ -797,7 +852,7 @@ class Game {
     const cat = this.cat, cust = this.customer;
     this.delivering = true;
     this.hideWork();
-    const midX = this.bags.length ? this.bags.reduce((s, b) => s + b.x, 0) / this.bags.length : (TABLE.x0 + TABLE.x1) / 2;
+    const midX = this.blocks?.centerX() ?? (this.bags.length ? this.bags.reduce((s, b) => s + b.x, 0) / this.bags.length : (TABLE.x0 + TABLE.x1) / 2);
     if (PORTRAIT) {
       // 세로: 손님은 위층 → 고양이가 카운터 아래에서 폴짝, 봉지를 위로 휙 던져 준다
       await this.step(cat.moveTo(Math.max(CAT_HOME - 80, Math.min(W - 90, midX))));
@@ -806,6 +861,7 @@ class Game {
       await this.step(cat.hop(40));
       this.bags = [];
       this.signs = [];
+      this.blocks = null;
       sfx.give();
       await this.step(new Promise((done) => this.fly(midX, TABLE.top - 60, cust.x, CFLOOR - 40, null, done, 0.6, drawBagIcon)));
       cust.carry(drawBagIcon);
@@ -814,6 +870,7 @@ class Game {
       sfx.pop(6);
       this.bags = [];
       this.signs = [];
+      this.blocks = null;
       cat.carry(drawBagIcon);
       await this.step(cat.moveTo(CUSTOMER_SPOT - 150));
       cat.facing = 'right';
@@ -896,7 +953,8 @@ class Game {
     // 손가락 힌트 위치
     const it = this.interaction;
     this.handTarget = null;
-    if (it && it.sent < it.total) {
+    if (it && it.type === 'blocks') this.handTarget = this.blocks?.hand() || null;
+    else if (it && it.sent < it.total) {
       if (it.type === 'machine') this.handTarget = { x: MACHINE.x + 10, y: FLOOR - 190 };
       else if (it.type === 'tray') this.handTarget = { x: TRAY.x + 10, y: TRAY.y - 40 };
       else if (it.type === 'give') {
@@ -915,6 +973,7 @@ class Game {
     drawCounter(ctx);
     for (const b of this.bags) this.drawBag(ctx, b);
     for (const s of this.signs) drawSign(ctx, s);
+    if (this.blocks) this.blocks.draw(ctx);
 
     // 고양이가 손님보다 앞에 오도록
     if (this.customer) this.customer.draw(ctx);
