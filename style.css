@@ -7,12 +7,18 @@
   --lemon: #ffd65c;
   --grape: #b592f5;
   --font: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
+  /* 노치·홈 바 영역 (game.js fit() 이 읽어서 무대를 그 안에 맞춘다) */
+  --sat: env(safe-area-inset-top, 0px);
+  --sar: env(safe-area-inset-right, 0px);
+  --sab: env(safe-area-inset-bottom, 0px);
+  --sal: env(safe-area-inset-left, 0px);
 }
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 html, body {
   margin: 0;
+  padding: 0;
   height: 100%;
   overflow: hidden;
   background: #ffe3ea;
@@ -34,7 +40,7 @@ html, body {
   border-radius: 0;
 }
 
-#scene { position: absolute; inset: 0; width: 1280px; height: 800px; display: block; }
+#scene { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
 
 [hidden] { display: none !important; }
 
@@ -183,7 +189,7 @@ button.chip:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink);
 #answers.locked .answer { pointer-events: none; }
 
 /* ── 화면 패널 ────────────────────────────── */
-.screen, #rotate {
+.screen {
   position: absolute; inset: 0;
   display: grid; place-items: center;
   background: rgba(255, 238, 243, .35);
@@ -254,10 +260,6 @@ button.chip:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink);
 .go { padding: 14px 34px; background: var(--pink); }
 .go.home { background: #fff; }
 
-#rotate { position: fixed; background: rgba(255, 227, 234, .94); z-index: 10; }
-#rotate .panel { padding: 20px 28px 28px; margin: 16px; }
-#rotate .big { font-size: 80px; margin: 0; }
-#rotate p { font-size: 34px; }
 
 .float-coin {
   position: absolute;
@@ -275,3 +277,16 @@ button.chip:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink);
 @keyframes pulse { 50% { transform: scale(1.15); } }
 @keyframes wiggle { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-10deg); } 75% { transform: rotate(10deg); } }
 @keyframes floatup { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-90px); opacity: 0; } }
+
+/* ── 세로 화면 (폭 720 무대) ───────────────── */
+#stage.portrait #order {
+  left: 20px; right: auto; top: 104px;
+  width: 450px;
+}
+#stage.portrait #order::after {
+  right: -30px; bottom: auto; top: 110px;
+  border: 14px solid transparent;
+  border-left: 16px solid var(--ink);
+}
+#stage.portrait #menu .panel { margin-left: 0; margin-top: -40px; }
+#stage.portrait .order-expr { font-size: 56px; }

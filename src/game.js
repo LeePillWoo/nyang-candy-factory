@@ -5,14 +5,40 @@ import { CUSTOMER_KEYS, OUTLINE } from './characters.js';
 import { sfx, speak, unlockAudio, isMuted, setMuted } from './audio.js';
 import { makeProblemSet, orderText, questionText } from './problems.js';
 
-// ── 무대 배치 (논리 좌표 1280×800) ───────────────────────────
-const W = 1280, H = 800;
-const FLOOR = 660;
-const CAT_HOME = 305;
-const CUSTOMER_SPOT = 1110;
-const TABLE = { x0: 390, x1: 980, top: 560 };
-const MACHINE = { x: 130 };
-const TRAY = { x: 140, y: 500 };
+// ── 무대 배치 (논리 좌표) ─────────────────────────────────
+// 가로(태블릿·PC·가로 폰): 1280×800 한 줄 무대 — 기계 · 고양이 · 카운터 · 손님
+// 세로(폰·세로 태블릿): 폭 720 — 위에서부터 주문서+손님 / 카운터와 봉지 / 공장 바닥(기계·고양이)
+let W, H, FLOOR, CFLOOR, CAT_HOME, CUSTOMER_SPOT, TABLE, MACHINE, TRAY, PORTRAIT;
+const PORTRAIT_W = 720;
+const PORTRAIT_H = { min: 1180, max: 1640 };
+
+function setLayout(portrait, height) {
+  PORTRAIT = portrait;
+  if (!portrait) {
+    W = 1280; H = 800;
+    FLOOR = 660;                 // 고양이·기계가 서는 바닥
+    CFLOOR = FLOOR;              // 손님이 서는 바닥
+    CAT_HOME = 305;
+    CUSTOMER_SPOT = 1110;
+    TABLE = { x0: 390, x1: 980, top: 560, bottom: FLOOR };
+    MACHINE = { x: 130 };
+    TRAY = { x: 140, y: 500 };
+  } else {
+    W = PORTRAIT_W; H = height;
+    // 길쭉한 폰일수록 남는 높이는 카운터 위아래로 나눠 준다
+    const extra = H - PORTRAIT_H.min;
+    const tableTop = 640 + Math.round(extra * 0.35);
+    FLOOR = H - 160;
+    CFLOOR = 380;
+    CAT_HOME = 340;
+    CUSTOMER_SPOT = 590;
+    TABLE = { x0: 24, x1: 696, top: tableTop, bottom: tableTop + 60 };
+    MACHINE = { x: 100 };
+    TRAY = { x: 128, y: FLOOR - 160 };
+  }
+  Actor.stageW = W;
+}
+setLayout(false, 800);
 const SLOT = 40;
 const CANDY_R = 16;
 const ROUNDS = 5;
@@ -66,13 +92,16 @@ class Game {
     this.coins = store.load('nyang.coins', 0);
     this.level = store.load('nyang.level', 'picture');
 
-    this.cat = new Actor('nyang', CAT_HOME, FLOOR, { facing: 'right', speed: 300 });
     this.customer = null;
-
     this.resetScene();
-    this.bindUI();
     this.fit();
-    window.addEventListener('resize', () => this.fit());
+    this.cat = new Actor('nyang', CAT_HOME, FLOOR, { facing: 'right', speed: 300 });
+
+    this.bindUI();
+    const refit = () => this.fit();
+    window.addEventListener('resize', refit);
+    window.addEventListener('orientationchange', () => setTimeout(refit, 250));
+    if (window.visualViewport) window.visualViewport.addEventListener('resize', refit);
     this.renderCoins();
     this.showMenu();
 
@@ -99,22 +128,63 @@ class Game {
     this.lastTap = 0;
     this.showMachine = true;
     this.machineWobble = 0;
+    this.plusSign = false;
   }
 
   // ── 화면 맞춤 ──────────────────────────────────────────
+  // 화면 크기·방향에 맞춰 무대를 고르고 확대/축소한다 (노치 등 안전 영역 제외)
   fit() {
-    const vw = window.innerWidth, vh = window.innerHeight;
+    const cs = getComputedStyle(document.documentElement);
+    const inset = (n) => parseFloat(cs.getPropertyValue(n)) || 0;
+    const l = inset('--sal'), r = inset('--sar'), t = inset('--sat'), b = inset('--sab');
+    const vw = Math.max(1, window.innerWidth - l - r);
+    const vh = Math.max(1, window.innerHeight - t - b);
+
+    const portrait = vh > vw;
+    const height = portrait
+      ? Math.max(PORTRAIT_H.min, Math.min(PORTRAIT_H.max, Math.round(PORTRAIT_W * vh / vw)))
+      : 800;
+    if (portrait !== PORTRAIT || height !== H || !this.laidOut) {
+      const oldW = W;
+      setLayout(portrait, height);
+      this.laidOut = true;
+      this.stage.classList.toggle('portrait', portrait);
+      this.stage.style.width = `${W}px`;
+      this.stage.style.height = `${H}px`;
+      this.relayout(oldW);
+    }
+
     const s = Math.min(vw / W, vh / H);
     this.scale = s;
-    this.stage.style.transform = `translate(${(vw - W * s) / 2}px, ${(vh - H * s) / 2}px) scale(${s})`;
+    this.stage.style.transform = `translate(${l + (vw - W * s) / 2}px, ${t + (vh - H * s) / 2}px) scale(${s})`;
     const k = Math.min(2.5, Math.max(1, s * (window.devicePixelRatio || 1)));
     this.canvas.width = Math.round(W * k);
     this.canvas.height = Math.round(H * k);
     this.ctx.setTransform(k, 0, 0, k, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
-    const portrait = vh > vw * 1.1;
-    if (!portrait) this.rotateDismissed = false;
-    $('#rotate').hidden = !portrait || this.rotateDismissed;
+  }
+
+  // 방향이 바뀌면 진행 중인 장면을 새 배치로 옮긴다
+  relayout(oldW) {
+    const sx = W / oldW;
+    for (const f of this.flyers) if (!f.done) { f.done = true; f.onDone(); }
+    this.flyers = [];
+    this.particles = [];
+    for (const a of [this.cat, this.customer]) {
+      if (!a) continue;
+      a.x *= sx;
+      if (a._move) a._move.x *= sx;
+    }
+    if (this.cat) {
+      this.cat.y = FLOOR;
+      if (!this.delivering && !this.cat._move) this.cat.x = CAT_HOME;
+    }
+    if (this.customer) {
+      this.customer.y = CFLOOR;
+      if (!this.delivering && !this.customer._move) this.customer.x = CUSTOMER_SPOT;
+    }
+    this.positionBags();
+    this.positionTray();
   }
 
   toStage(e) {
@@ -148,7 +218,6 @@ class Game {
 
     $('#result .again').addEventListener('click', () => { sfx.tap(); this.run(this.mode, this.level); });
     $('#result .home').addEventListener('click', () => { sfx.tap(); this.showMenu(); });
-    $('#rotate .go').addEventListener('click', () => { this.rotateDismissed = true; $('#rotate').hidden = true; });
   }
 
   renderLevel() {
@@ -209,6 +278,7 @@ class Game {
   // ── 화면 전환 ──────────────────────────────────────────
   abort() {
     this.token++;
+    this.delivering = false;
     if (this.pending) { const r = this.pending; this.pending = null; r(null); }
     if ('speechSynthesis' in window) speechSynthesis.cancel();
   }
@@ -281,7 +351,7 @@ class Game {
     this.showMachine = p.mode === 'add' || p.mode === 'mul';
 
     // 손님 등장
-    const cust = this.customer = new Actor(customerKey, W + 140, FLOOR, { facing: 'left', speed: 330 });
+    const cust = this.customer = new Actor(customerKey, W + 140, CFLOOR, { facing: 'left', speed: 330 });
     await this.step(cust.moveTo(CUSTOMER_SPOT));
     sfx.hop();
     await this.step(cust.hop(30));
@@ -309,12 +379,11 @@ class Game {
     if (p.mode === 'add') {
       const cols = 5;
       const rows = Math.ceil(Math.max(p.a, p.b) / cols);
+      this.plusSign = true;
       this.layoutBags([
         { n: p.a, cols, rows, color: BAG.pink, candy: CANDY.strawberry },
         { n: p.b, cols, rows, color: BAG.purple, candy: CANDY.grape },
       ], 70);
-      const [b0, b1] = this.bags;
-      this.signs.push({ x: (b0.x + b0.w / 2 + b1.x - b1.w / 2) / 2, y: TABLE.top - Math.max(b0.h, b1.h) / 2, text: '+' });
       for (const b of this.bags) for (const s of b.slots) this.fillOrder.push(s);
     } else if (p.mode === 'mul') {
       const specs = [];
@@ -350,40 +419,61 @@ class Game {
     }
   }
 
+  // 봉지를 만들고(내용 상태) → positionBags 로 위치를 잡는다(방향이 바뀌면 위치만 다시 계산)
   layoutBags(specs, minGap) {
-    const shapes = specs.map((sp) => {
+    this.bagGap = minGap;
+    for (const sp of specs) {
       const rows = sp.rows || Math.max(1, Math.ceil(sp.n / sp.cols));
-      return { ...sp, rows, w: sp.cols * SLOT + 28, h: rows * SLOT + 50 };
-    });
-    const total = shapes.reduce((s, b) => s + b.w, 0);
+      const bag = { cols: sp.cols, rows, w: sp.cols * SLOT + 28, h: rows * SLOT + 50, color: sp.color, hideSlots: !!sp.hideSlots, showTag: !!sp.showTag, tag: null, tagBorn: 0, wobble: 0, slots: [] };
+      for (let i = 0; i < sp.n; i++) bag.slots.push({ bag, i, color: sp.candy, candy: null, reserved: false });
+      this.bags.push(bag);
+    }
+    this.positionBags();
+  }
+
+  positionBags() {
+    this.signs = [];
+    if (!this.bags.length) return;
+    const total = this.bags.reduce((s, b) => s + b.w, 0);
     const room = TABLE.x1 - TABLE.x0 - 20;
     // 여유 공간을 나눠 쓰되 minGap*2 를 넘지 않게, 최소 8px
-    const gap = shapes.length > 1 ? Math.max(8, Math.min(minGap * 2, (room - total) / (shapes.length - 1))) : 0;
-    const span = total + gap * (shapes.length - 1);
-    let x = (TABLE.x0 + TABLE.x1) / 2 - span / 2;
-    for (const sp of shapes) {
-      const cx = x + sp.w / 2;
-      const top = TABLE.top - sp.h;
-      const bag = { x: cx, w: sp.w, h: sp.h, top, color: sp.color, hideSlots: !!sp.hideSlots, showTag: !!sp.showTag, tag: null, tagBorn: 0, wobble: 0, slots: [] };
-      const gridW = sp.cols * SLOT;
-      for (let i = 0; i < sp.n; i++) {
-        const c = i % sp.cols, r = Math.floor(i / sp.cols);
-        bag.slots.push({ bag, x: cx - gridW / 2 + SLOT / 2 + c * SLOT, y: top + 40 + SLOT / 2 + r * SLOT, color: sp.candy, candy: null, reserved: false });
+    const n = this.bags.length;
+    const gap = n > 1 ? Math.max(8, Math.min(this.bagGap * 2, (room - total) / (n - 1))) : 0;
+    let x = (TABLE.x0 + TABLE.x1) / 2 - (total + gap * (n - 1)) / 2;
+    for (const bag of this.bags) {
+      bag.x = x + bag.w / 2;
+      bag.top = TABLE.top - bag.h;
+      const gridW = bag.cols * SLOT;
+      for (const s of bag.slots) {
+        const c = s.i % bag.cols, r = Math.floor(s.i / bag.cols);
+        s.x = bag.x - gridW / 2 + SLOT / 2 + c * SLOT;
+        s.y = bag.top + 40 + SLOT / 2 + r * SLOT;
       }
-      this.bags.push(bag);
-      x += sp.w + gap;
+      x += bag.w + gap;
+    }
+    if (this.plusSign && n === 2) {
+      const [b0, b1] = this.bags;
+      this.signs.push({ x: (b0.x + b0.w / 2 + b1.x - b1.w / 2) / 2, y: TABLE.top - Math.max(b0.h, b1.h) / 2, text: '+' });
     }
   }
 
   makeTray(n) {
-    const cols = 5;
     const candies = [];
-    for (let i = 0; i < n; i++) {
-      const c = i % cols, r = Math.floor(i / cols);
+    for (let i = 0; i < n; i++) candies.push({ i, color: pick(CANDY.palette), born: this.time + i * 0.03 });
+    this.tray = { candies, n0: n, wobble: 0 };
+    this.positionTray();
+    return this.tray;
+  }
+
+  positionTray() {
+    if (!this.tray) return;
+    const cols = 5, n = this.tray.n0;
+    for (const c of this.tray.candies) {
+      const col = c.i % cols, r = Math.floor(c.i / cols);
       const rowCount = Math.min(cols, n - r * cols);
-      candies.push({ x: TRAY.x + (c - (rowCount - 1) / 2) * 34, y: TRAY.y - 22 - r * 30, color: pick(CANDY.palette), born: this.time + i * 0.03 });
+      c.x = TRAY.x + (col - (rowCount - 1) / 2) * 34;
+      c.y = TRAY.y - 22 - r * 30;
     }
-    return { candies, wobble: 0 };
   }
 
   updateTag(bag, index, born = this.time) {
@@ -460,7 +550,7 @@ class Game {
       bag.wobble = 0.6;
       sfx.give();
       const cust = this.customer;
-      this.fly(best.x, best.y, cust.x - 6, FLOOR - 112, color, () => {
+      this.fly(best.x, best.y, cust.x - 6, CFLOOR - 112, color, () => {
         cust.play('eat', 0.7);
         cust.say('냠!', 0.6);
         sfx.pop(it.landed + 3);
@@ -476,8 +566,9 @@ class Game {
     if (it.landed >= it.total) setTimeout(() => { if (this.interaction === it) this.resolveInput(true); }, 250);
   }
 
-  fly(x0, y0, x1, y1, color, onDone, dur = 0.42) {
-    this.flyers.push({ x0, y0, x1, y1, color, onDone, t: 0, dur, arc: 70 + Math.abs(x1 - x0) * 0.15 });
+  // draw 를 주면 사탕 대신 그 그림을 날린다 (원점 = 날아가는 물체 중심)
+  fly(x0, y0, x1, y1, color, onDone, dur = 0.42, draw = null) {
+    this.flyers.push({ x0, y0, x1, y1, color, onDone, t: 0, dur, draw, arc: 70 + Math.abs(x1 - x0) * 0.15 });
   }
 
   // ── 정답 고르기 ────────────────────────────────────────
@@ -524,7 +615,7 @@ class Game {
     right.classList.add('right');
     box.classList.add('locked');
     sfx.correct();
-    this.burst(640, 600, 26);
+    this.burst(W / 2, FLOOR - 60, 26);
     const reward = this.firstTry ? 3 : 1;
     this.earned += reward;
     this.results[this.round] = this.firstTry ? 'star' : 'ok';
@@ -565,28 +656,43 @@ class Game {
   // ── 배달 ──────────────────────────────────────────────
   async deliver() {
     const cat = this.cat, cust = this.customer;
+    this.delivering = true;
     const midX = this.bags.length ? this.bags.reduce((s, b) => s + b.x, 0) / this.bags.length : (TABLE.x0 + TABLE.x1) / 2;
-    await this.step(cat.moveTo(midX));
-    sfx.pop(6);
-    this.bags = [];
-    this.signs = [];
-    cat.carry(drawBagIcon);
-    await this.step(cat.moveTo(CUSTOMER_SPOT - 150));
-    cat.facing = 'right';
-    sfx.hop();
-    await this.step(cat.hop(34));
-    cat.carry(null);
-    cust.carry(drawBagIcon);
-    sfx.give();
+    if (PORTRAIT) {
+      // 세로: 손님은 위층 → 고양이가 카운터 아래에서 폴짝, 봉지를 위로 휙 던져 준다
+      await this.step(cat.moveTo(Math.max(CAT_HOME - 80, Math.min(W - 90, midX))));
+      cat.facing = 'right';
+      sfx.hop();
+      await this.step(cat.hop(40));
+      this.bags = [];
+      this.signs = [];
+      sfx.give();
+      await this.step(new Promise((done) => this.fly(midX, TABLE.top - 60, cust.x, CFLOOR - 40, null, done, 0.6, drawBagIcon)));
+      cust.carry(drawBagIcon);
+    } else {
+      await this.step(cat.moveTo(midX));
+      sfx.pop(6);
+      this.bags = [];
+      this.signs = [];
+      cat.carry(drawBagIcon);
+      await this.step(cat.moveTo(CUSTOMER_SPOT - 150));
+      cat.facing = 'right';
+      sfx.hop();
+      await this.step(cat.hop(34));
+      cat.carry(null);
+      cust.carry(drawBagIcon);
+      sfx.give();
+    }
     cust.setAnim('happy');
     cust.say('고마워요!', 1.6);
-    this.hearts(cust.x, FLOOR - 120);
+    this.hearts(cust.x, CFLOOR - 70);
     await this.sleep(1.3);
     $('#order').hidden = true;
     this.tray = null;
     await this.step(Promise.all([cust.moveTo(W + 160), cat.moveTo(CAT_HOME)]));
     cat.facing = 'right';
     this.customer = null;
+    this.delivering = false;
   }
 
   async showResult() {
@@ -606,7 +712,7 @@ class Game {
     $('#dots').hidden = true;
     sfx.fanfare();
     speak(stars >= 4 ? '최고의 사탕 가게예요!' : '오늘도 수고했어요!');
-    this.burst(640, 300, 40);
+    this.burst(W / 2, H * 0.38, 40);
     this.cat.play('happy', 2.5);
   }
 
@@ -679,7 +785,11 @@ class Game {
       const e = easeOut(p);
       const x = f.x0 + (f.x1 - f.x0) * e;
       const y = f.y0 + (f.y1 - f.y0) * p - Math.sin(p * Math.PI) * f.arc;
-      drawCandy(ctx, x, y, f.color, 1, p * 8);
+      if (f.draw) {
+        ctx.save(); ctx.translate(x, y); ctx.rotate(Math.sin(p * Math.PI) * 0.3); f.draw(ctx); ctx.restore();
+      } else {
+        drawCandy(ctx, x, y, f.color, 1, p * 8);
+      }
     }
 
     for (const b of this.bags) for (const s of b.slots) if (s.candy && s.candy.badge) drawBadge(ctx, s.x, s.y, s.candy.badge, t);
@@ -750,36 +860,42 @@ function drawBackground(ctx, t) {
   ctx.lineWidth = 5;
   ctx.beginPath(); ctx.moveTo(0, FLOOR - 70); ctx.lineTo(W, FLOOR - 70); ctx.stroke();
 
-  // 창문
-  ctx.save();
-  ctx.lineWidth = 6;
-  ctx.fillStyle = '#bfe6ff';
-  rr(ctx, 470, 160, 240, 170, 26); ctx.fill(); ctx.stroke();
-  ctx.fillStyle = '#ffffff';
-  ctx.globalAlpha = 0.9;
-  const cx = 470 + ((t * 12) % 300) - 30;
-  ctx.beginPath(); ctx.ellipse(cx, 220, 34, 14, 0, 0, Math.PI * 2); ctx.ellipse(cx + 24, 210, 22, 14, 0, 0, Math.PI * 2); ctx.fill();
-  ctx.globalAlpha = 1;
-  ctx.beginPath(); ctx.moveTo(590, 160); ctx.lineTo(590, 330); ctx.moveTo(470, 245); ctx.lineTo(710, 245); ctx.stroke();
-  ctx.restore();
-
-  // 선반 + 사탕병
-  ctx.save();
-  ctx.lineWidth = 5;
-  ctx.strokeStyle = OUTLINE;
-  ctx.fillStyle = '#e7a96b';
-  rr(ctx, 770, 360, 260, 18, 8); ctx.fill(); ctx.stroke();
-  const jars = ['#ff6b8b', '#5bc0f8', '#ffd84d'];
-  jars.forEach((c, i) => {
-    const x = 810 + i * 90;
-    ctx.fillStyle = 'rgba(255,255,255,.75)';
-    rr(ctx, x - 30, 290, 60, 70, 16); ctx.fill(); ctx.stroke();
-    ctx.fillStyle = c;
-    rr(ctx, x - 22, 322, 44, 32, 10); ctx.fill();
-    ctx.fillStyle = '#ff9fb2';
-    rr(ctx, x - 24, 280, 48, 14, 6); ctx.fill(); ctx.stroke();
-  });
-  ctx.restore();
+  if (PORTRAIT) {
+    // 카운터와 바닥 사이 창문
+    const wy = TABLE.bottom + 30;
+    const wh = Math.min(170, FLOOR - 100 - wy);
+    if (wh > 90) drawWindow(ctx, 450, wy, 240, wh, t);
+    // 손님이 서는 가게 입구: 유리문 + 선반 바닥
+    ctx.save();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = OUTLINE;
+    ctx.fillStyle = '#d8f0ff';
+    rr(ctx, CUSTOMER_SPOT - 95, CFLOOR - 250, 190, 250, [90, 90, 0, 0]); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#ff8fab';
+    rr(ctx, CUSTOMER_SPOT - 110, CFLOOR - 268, 220, 30, 14); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = '#e7a96b';
+    rr(ctx, 0 - 10, CFLOOR - 2, W + 20, 20, 8); ctx.fill(); ctx.stroke();
+    ctx.restore();
+  } else {
+    drawWindow(ctx, 470, 160, 240, 170, t);
+    // 선반 + 사탕병
+    ctx.save();
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = OUTLINE;
+    ctx.fillStyle = '#e7a96b';
+    rr(ctx, 770, 360, 260, 18, 8); ctx.fill(); ctx.stroke();
+    const jars = ['#ff6b8b', '#5bc0f8', '#ffd84d'];
+    jars.forEach((c, i) => {
+      const x = 810 + i * 90;
+      ctx.fillStyle = 'rgba(255,255,255,.75)';
+      rr(ctx, x - 30, 290, 60, 70, 16); ctx.fill(); ctx.stroke();
+      ctx.fillStyle = c;
+      rr(ctx, x - 22, 322, 44, 32, 10); ctx.fill();
+      ctx.fillStyle = '#ff9fb2';
+      rr(ctx, x - 24, 280, 48, 14, 6); ctx.fill(); ctx.stroke();
+    });
+    ctx.restore();
+  }
 
   // 가랜드
   ctx.save();
@@ -787,8 +903,7 @@ function drawBackground(ctx, t) {
   ctx.strokeStyle = OUTLINE;
   ctx.beginPath(); ctx.moveTo(0, 96); ctx.quadraticCurveTo(W / 2, 150, W, 96); ctx.stroke();
   const flags = ['#ff8fab', '#ffd65c', '#7fdcae', '#7cc8f8', '#b592f5'];
-  for (let i = 0; i < 17; i++) {
-    const x = 40 + i * 75;
+  for (let i = 0, x = 40; x < W; i++, x += 75) {
     const u = x / W;
     const y = 96 + (1 - (2 * u - 1) ** 2) * 27;
     const sw = Math.sin(t * 2 + i) * 0.06;
@@ -809,6 +924,24 @@ function drawBackground(ctx, t) {
   ctx.strokeStyle = OUTLINE;
   ctx.lineWidth = 5;
   ctx.beginPath(); ctx.moveTo(0, FLOOR); ctx.lineTo(W, FLOOR); ctx.stroke();
+}
+
+function drawWindow(ctx, x, y, w, h, t) {
+  ctx.save();
+  ctx.lineWidth = 6;
+  ctx.strokeStyle = OUTLINE;
+  ctx.fillStyle = '#bfe6ff';
+  rr(ctx, x, y, w, h, 26); ctx.fill(); ctx.stroke();
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = '#ffffff';
+  ctx.globalAlpha = 0.9;
+  const cx = x + ((t * 12) % (w + 60)) - 30;
+  const cy = y + h * 0.35;
+  ctx.beginPath(); ctx.ellipse(cx, cy, 34, 14, 0, 0, Math.PI * 2); ctx.ellipse(cx + 24, cy - 10, 22, 14, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  ctx.beginPath(); ctx.moveTo(x + w / 2, y); ctx.lineTo(x + w / 2, y + h); ctx.moveTo(x, y + h / 2); ctx.lineTo(x + w, y + h / 2); ctx.stroke();
+  ctx.restore();
 }
 
 function drawMachine(ctx, wob, t) {
@@ -860,13 +993,13 @@ function drawCounter(ctx) {
   ctx.lineJoin = 'round';
   // 앞판
   ctx.fillStyle = '#ffffff';
-  rr(ctx, TABLE.x0 + 10, TABLE.top + 10, TABLE.x1 - TABLE.x0 - 20, FLOOR - TABLE.top - 6, 12); ctx.fill(); ctx.stroke();
+  rr(ctx, TABLE.x0 + 10, TABLE.top + 10, TABLE.x1 - TABLE.x0 - 20, TABLE.bottom - TABLE.top - 6, 12); ctx.fill(); ctx.stroke();
   ctx.save();
   ctx.clip();
   ctx.fillStyle = '#ffb3c7';
-  for (let x = TABLE.x0; x < TABLE.x1; x += 56) ctx.fillRect(x, TABLE.top, 28, FLOOR - TABLE.top);
+  for (let x = TABLE.x0; x < TABLE.x1; x += 56) ctx.fillRect(x, TABLE.top, 28, TABLE.bottom - TABLE.top);
   ctx.restore();
-  rr(ctx, TABLE.x0 + 10, TABLE.top + 10, TABLE.x1 - TABLE.x0 - 20, FLOOR - TABLE.top - 6, 12); ctx.stroke();
+  rr(ctx, TABLE.x0 + 10, TABLE.top + 10, TABLE.x1 - TABLE.x0 - 20, TABLE.bottom - TABLE.top - 6, 12); ctx.stroke();
   // 상판
   ctx.fillStyle = '#e7a96b';
   rr(ctx, TABLE.x0, TABLE.top - 4, TABLE.x1 - TABLE.x0, 22, 10); ctx.fill(); ctx.stroke();
