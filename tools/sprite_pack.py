@@ -18,13 +18,20 @@
   --alpha-cut A           알파 A 미만 픽셀은 완전 투명 처리 (가장자리 잡티 제거)
   --all                   --anim을 안 줘도 모든 행을 row0..rowN 으로 내보냄
   --pad P                 셀 안쪽 여백(px)
+  --bg white              흰 배경 시트: 가장자리에서 이어진 흰 배경(+옅은 그림자)을 지워 투명하게
+  --grid 6x6              칸이 일정한 시트: 자동 감지 대신 균일하게 자르고, 그림 위치를 그대로 유지
+                          (하트·물방울 같은 효과가 옆에 붙어 있어도 프레임이 흔들리지 않음)
+
+흰 배경 + 6x6 칸 시트 예:
+  python tools/sprite_pack.py assets/raw/cat2_sheet.png -o assets/sprites/cat --bg white --grid 6x6 \
+      --anim walk=0 --anim groom=1 --anim happy=2 --scale 0.62
 """
 import argparse
 import json
 import os
 import sys
 
-from PIL import Image
+from PIL import Image, ImageDraw, ImageFilter
 
 
 def runs(profile, min_gap, min_len):
@@ -73,6 +80,90 @@ def detect(alpha, width, height, min_gap, min_len):
     return result
 
 
+def remove_white_bg(img, tol):
+    """가장자리에서 이어진 흰(밝은) 배경과 옅은 그림자를 투명하게.
+    외곽선의 작은 틈으로 배경이 얼굴 속까지 새지 않도록, 어두운 선을 2px 두껍게 만든 밝기 지도에서 채운다."""
+    rgb = img.convert('RGB')
+    lum = rgb.convert('L')
+    thick = lum.filter(ImageFilter.MinFilter(5))       # 어두운 외곽선을 두껍게 → 틈 메우기
+    w, h = rgb.size
+    marker = 0
+    work = thick.point(lambda v: max(1, v))            # 0 은 표시용으로 비워 둔다
+    for seed in [(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)]:
+        if work.getpixel(seed) != marker:
+            ImageDraw.floodfill(work, seed, marker, thresh=tol)
+    bgmask = work.point(lambda v: 255 if v == marker else 0)
+    # 배경과 맞닿은 3px 안쪽의 밝은 테두리(흰 스티커 테두리·번짐)는 밝기만큼 투명하게
+    ring = bgmask.filter(ImageFilter.MaxFilter(7))
+    alpha = []
+    for bgv, rv, lv in zip(bgmask.tobytes(), ring.tobytes(), lum.tobytes()):
+        if bgv:
+            alpha.append(0)
+        elif rv and lv > 200:
+            alpha.append(max(0, min(255, (255 - lv) * 5)))
+        else:
+            alpha.append(255)
+    a = Image.new('L', rgb.size)
+    a.putdata(alpha)
+    out = rgb.convert('RGBA')
+    out.putalpha(a)
+    return out
+
+
+def drop_edge_bits(img, box, keep_ratio=0.03):
+    """칸 경계에 걸쳐 들어온 이웃 칸 그림 조각(작은 덩어리)을 지운다.
+    칸 테두리에 닿고, 칸 안 그림의 keep_ratio 보다 작은 덩어리만 투명하게 만든다."""
+    x0, y0, x1, y1 = box
+    w, h = x1 - x0, y1 - y0
+    a = img.getchannel('A').crop(box)
+    px = a.load()
+    seen = bytearray(w * h)
+    total = sum(1 for v in a.tobytes() if v > 40)
+    if not total:
+        return
+    for sy in range(h):
+        for sx in range(w):
+            if seen[sy * w + sx] or px[sx, sy] <= 40:
+                continue
+            stack, comp, edge = [(sx, sy)], [], False
+            seen[sy * w + sx] = 1
+            while stack:
+                x, y = stack.pop()
+                comp.append((x, y))
+                if x in (0, w - 1) or y in (0, h - 1):
+                    edge = True
+                for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and px[nx, ny] > 40:
+                        seen[ny * w + nx] = 1
+                        stack.append((nx, ny))
+            if edge and len(comp) < total * keep_ratio:
+                for x, y in comp:
+                    img.putpixel((x0 + x, y0 + y), (0, 0, 0, 0))
+
+
+def grid_frames(alpha, width, height, cols, rows, use_rows=None):
+    """균일한 칸으로 자른 프레임. 내용 bbox 의 합집합으로 모든 칸을 같은 크기로 자른다(그림 위치 유지)."""
+    cw, ch = width / cols, height / rows
+    boxes = []
+    for r in range(rows):
+        for c in range(cols):
+            x0, y0 = round(c * cw), round(r * ch)
+            x1, y1 = round((c + 1) * cw), round((r + 1) * ch)
+            bb = alpha.crop((x0, y0, x1, y1)).getbbox()
+            boxes.append((x0, y0, bb))
+    used = [bb for i, (_, _, bb) in enumerate(boxes) if bb and (use_rows is None or i // cols in use_rows)]
+    ux0 = min(b[0] for b in used); uy0 = min(b[1] for b in used)
+    ux1 = max(b[2] for b in used); uy1 = max(b[3] for b in used)
+    grid = []
+    for r in range(rows):
+        row = []
+        for c in range(cols):
+            x0, y0, _ = boxes[r * cols + c]
+            row.append((x0 + ux0, y0 + uy0, x0 + ux1, y0 + uy1))
+        grid.append(row)
+    return grid
+
+
 def parse_kv(items, cast, what):
     out = {}
     for it in items or []:
@@ -97,10 +188,15 @@ def main():
     ap.add_argument('--pad', type=int, default=2)
     ap.add_argument('--all', action='store_true', help='모든 행을 rowN 이름으로 내보냄')
     ap.add_argument('--dry-run', action='store_true', help='감지 결과만 출력')
+    ap.add_argument('--bg', choices=['none', 'white'], default='none', help='white: 흰 배경을 지움')
+    ap.add_argument('--bg-tol', type=int, default=42, help='흰 배경으로 볼 밝기 차이 (그림자까지 지우려면 크게)')
+    ap.add_argument('--grid', help='COLSxROWS: 균일한 칸으로 자르기 (예: 6x6)')
     args = ap.parse_args()
 
     img = Image.open(args.src).convert('RGBA')
     W, H = img.size
+    if args.bg == 'white':
+        img = remove_white_bg(img, args.bg_tol)
 
     # 알파 컷: 반투명 잡티(빨간 테두리 등)를 완전히 지운다
     r, g, b, a = img.split()
@@ -108,7 +204,20 @@ def main():
     img = Image.merge('RGBA', (r, g, b, a))
     mask = bytes(1 if v else 0 for v in a.tobytes())
 
-    grid = detect(mask, W, H, args.min_gap, args.min_len)
+    if args.grid:
+        gc, gr = (int(v) for v in args.grid.lower().split('x'))
+        for ri in range(gr):
+            for ci in range(gc):
+                drop_edge_bits(img, (round(ci * W / gc), round(ri * H / gr), round((ci + 1) * W / gc), round((ri + 1) * H / gr)))
+        a = img.getchannel('A')
+        # 쓰는 행만 기준으로 칸 크기를 잡아 여백(특히 발밑)을 줄인다
+        use_rows = set(parse_kv(args.anim, int, '--anim').values()) or None
+        grid = grid_frames(a, W, H, gc, gr, use_rows)
+        # 빈 칸(그림 없는 칸)은 프레임에서 뺀다
+        grid = [[f for i, f in enumerate(row) if a.crop((round(i * W / gc), round(ri * H / gr), round((i + 1) * W / gc), round((ri + 1) * H / gr))).getbbox()]
+                for ri, row in enumerate(grid)]
+    else:
+        grid = detect(mask, W, H, args.min_gap, args.min_len)
     print(f'감지: {len(grid)}행')
     for i, frames in enumerate(grid):
         sizes = ' '.join(f'{x1 - x0}x{y1 - y0}' for x0, y0, x1, y1 in frames)

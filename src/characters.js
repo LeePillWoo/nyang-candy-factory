@@ -11,16 +11,31 @@ export const CHARACTERS = {
     name: '냥이',
     kind: 'sprite',
     sprite: 'cat',
-    scale: 1.45,          // 화면에 그릴 배율
-    faces: 'right',       // 시트 그림이 바라보는 방향
-    height: 130,          // 머리 위 말풍선/짐 위치 계산용 (배율 적용 후 px)
+    scale: 1.0,           // 화면에 그릴 배율
+    faces: 'right',       // 시트 그림(걷기)이 바라보는 방향
+    height: 140,          // 머리 위 말풍선/짐 위치 계산용 (배율 적용 후 px)
     anims: {
-      idle:  { anim: 'idle', seq: [0, 0, 0, 1, 2, 2, 1, 0, 0, 6, 0, 0, 7, 7, 0, 3, 4, 5, 4, 3], fps: 4 },
+      // 앉아서 두리번 → 가끔 세수
+      idle:  { anim: 'groom', seq: [0, 0, 0, 0, 0, 0, 5, 5, 5, 5, 0, 0, 0, 0, 1, 2, 3, 4, 3, 4, 0, 0], fps: 4 },
       walk:  { anim: 'walk' },
-      happy: { anim: 'face', seq: [1, 2, 1, 6, 6, 6], fps: 5, scale: 1.3 },
-      sad:   { anim: 'face', seq: [5, 5, 4, 4], fps: 3, scale: 1.3 },
-      sleep: { anim: 'sleep', fps: 3 },
-      groom: { anim: 'groom', fps: 6 },
+      happy: { anim: 'happy', seq: [1, 2, 3, 3, 2, 4, 4], fps: 5 },
+      sad:   { anim: 'surprise', seq: [1, 1, 1, 0], fps: 3 },
+    },
+  },
+
+  // ── 스프라이트 손님 (FEATURED_CUSTOMERS: 한 판에 한 번씩 꼭 나옴) ──
+  tiger: {
+    name: '호돌이',
+    kind: 'sprite',
+    sprite: 'tiger',
+    scale: 1.08,          // 코드로 그린 손님들(키 약 165px)과 비슷하게
+    faces: 'right',
+    height: 165,
+    anims: {
+      idle:  { anim: 'happy', seq: [0, 0, 0, 0, 0, 5, 5, 5, 5], fps: 3 },
+      walk:  { anim: 'walk' },
+      happy: { anim: 'happy', seq: [2, 3, 4, 4, 3], fps: 5 },
+      eat:   { anim: 'giggle', seq: [1, 2, 3, 2], fps: 7 },
     },
   },
 
@@ -32,7 +47,10 @@ export const CHARACTERS = {
   panda:  shape('판다랑', { body: '#ffffff', belly: '#ffffff', limbs: '#3d3535', ears: 'round', earColor: '#3d3535', inner: '#3d3535', face: 'panda', tail: 'nub' }),
 };
 
+// 코드로 그린 손님들 — 무작위로 나온다
 export const CUSTOMER_KEYS = ['bear', 'rabbit', 'pig', 'fox', 'dog', 'panda'];
+// 스프라이트 손님 — 한 판(손님 5명)에 각자 한 번씩 꼭 나온다. 새 동물 시트를 넣으면 여기에 추가.
+export const FEATURED_CUSTOMERS = ['tiger'];
 
 function shape(name, look) {
   return {

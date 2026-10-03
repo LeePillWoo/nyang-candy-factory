@@ -4,22 +4,30 @@
 export const SPRITES = {
   cat: {
     src: 'cat.png',
-    frameW: 116,
-    frameH: 102,
+    frameW: 165,
+    frameH: 181,
     anims: {
-      walk:  { row: 0, frames: 8, fps: 12 },
-      run:   { row: 1, frames: 8, fps: 14 },
-      jump:  { row: 2, frames: 8, fps: 8 },
-      idle:  { row: 3, frames: 8, fps: 4 },
-      groom: { row: 4, frames: 8, fps: 8 },
-      sleep: { row: 5, frames: 8, fps: 8 },
-      face:  { row: 6, frames: 8, fps: 8 },
-      play:  { row: 7, frames: 8, fps: 8 },
+      walk: { row: 0, frames: 6, fps: 10 },
+      groom: { row: 1, frames: 6, fps: 4 },
+      happy: { row: 2, frames: 6, fps: 5 },
+      surprise: { row: 3, frames: 6, fps: 8 },
+    },
+  },
+  tiger: {
+    src: 'tiger.png',
+    frameW: 162,
+    frameH: 180,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      giggle: { row: 1, frames: 6, fps: 8 },
+      happy: { row: 2, frames: 6, fps: 5 },
     },
   },
 };
 
 const SPRITE_DIR = 'assets/sprites/';
+// 그림을 바꾸면 올린다 (폰 캐시에 예전 그림이 남지 않게)
+const SPRITE_VERSION = 7;
 
 // 모든 시트 이미지를 불러와 SPRITES[name].image 에 붙인다.
 export function loadSprites() {
@@ -29,7 +37,7 @@ export function loadSprites() {
     img.onerror = () => { console.warn(`스프라이트 로드 실패: ${name}`); resolve(); };
     // 단일 HTML 빌드(tools/build_single.py)에서는 data URI로 박아 넣은 이미지를 쓴다
     const inline = window.NYANG_INLINE_SPRITES && window.NYANG_INLINE_SPRITES[sheet.src];
-    img.src = inline || SPRITE_DIR + sheet.src;
+    img.src = inline || `${SPRITE_DIR}${sheet.src}?v=${SPRITE_VERSION}`;
   })));
 }
 

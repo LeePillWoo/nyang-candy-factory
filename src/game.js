@@ -1,7 +1,7 @@
 // 냥냥 사탕 공장 — 게임 흐름, 장면 그리기, 입력 처리
 import { loadSprites } from './sprites.js';
 import { Actor, wait } from './actor.js';
-import { CUSTOMER_KEYS, OUTLINE } from './characters.js';
+import { CUSTOMER_KEYS, FEATURED_CUSTOMERS, OUTLINE } from './characters.js';
 import { sfx, speak, unlockAudio, isMuted, setMuted } from './audio.js';
 import { makeProblemSet, orderText, questionText } from './problems.js';
 import { solutionSteps } from './work.js';
@@ -363,7 +363,9 @@ class Game {
     this.results = [];
     this.earned = 0;
     this.round = 0;
-    this.lineup = shuffle([...CUSTOMER_KEYS]).slice(0, ROUNDS);
+    // 스프라이트 손님은 꼭 한 번씩, 나머지 자리는 코드로 그린 손님 중 무작위
+    const featured = shuffle([...FEATURED_CUSTOMERS]).slice(0, ROUNDS);
+    this.lineup = shuffle([...featured, ...shuffle([...CUSTOMER_KEYS]).slice(0, ROUNDS - featured.length)]);
     this.resetScene();
     this.customer = null;
     $('#menu').hidden = true;
