@@ -1,7 +1,7 @@
 {
   "src": "tiger.png",
-  "frameW": 162,
-  "frameH": 180,
+  "frameW": 167,
+  "frameH": 183,
   "anims": {
     "walk": {
       "row": 0,
@@ -17,6 +17,21 @@
       "row": 2,
       "frames": 6,
       "fps": 5.0
+    },
+    "feel": {
+      "row": 3,
+      "frames": 6,
+      "fps": 8
+    },
+    "item": {
+      "row": 4,
+      "frames": 6,
+      "fps": 8
+    },
+    "hold": {
+      "row": 5,
+      "frames": 6,
+      "fps": 8
     }
   }
 }

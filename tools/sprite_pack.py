@@ -21,6 +21,11 @@
   --bg white              흰 배경 시트: 가장자리에서 이어진 흰 배경(+옅은 그림자)을 지워 투명하게
   --grid 6x6              칸이 일정한 시트: 자동 감지 대신 균일하게 자르고, 그림 위치를 그대로 유지
                           (하트·물방울 같은 효과가 옆에 붙어 있어도 프레임이 흔들리지 않음)
+  --baseline              (--grid 와 함께) 줄마다 발끝을 맞춘다. 아래 줄로 갈수록 그림이 칸 안에서 떠 있는 시트용
+  --quantize              256색 팔레트 PNG 로 줄인다 (눈으로는 거의 같고 파일은 약 1/3).
+                          `pip install imagequant` 가 있으면 그걸 쓰고, 없으면 Pillow 기본 방식.
+  --shrink                이미 포장된 시트를 그 자리에서 256색으로만 줄인다 (칸 · json 은 그대로)
+                          예: python tools/sprite_pack.py assets/sprites/cat.png --shrink
 
 흰 배경 + 6x6 칸 시트 예:
   python tools/sprite_pack.py assets/raw/cat2_sheet.png -o assets/sprites/cat --bg white --grid 6x6 \
@@ -110,9 +115,10 @@ def remove_white_bg(img, tol):
     return out
 
 
-def drop_edge_bits(img, box, keep_ratio=0.03):
-    """칸 경계에 걸쳐 들어온 이웃 칸 그림 조각(작은 덩어리)을 지운다.
-    칸 테두리에 닿고, 칸 안 그림의 keep_ratio 보다 작은 덩어리만 투명하게 만든다."""
+def drop_edge_bits(img, box, keep_ratio=0.03, sliver=14):
+    """칸 경계에 걸쳐 들어온 이웃 칸 그림 조각을 지운다.
+    칸 테두리에 닿은 덩어리 중 (칸 안 그림의 keep_ratio 보다 작거나) 테두리 쪽으로 얇은(sliver px 이하) 조각만 투명하게.
+    예: 위 칸 캐릭터의 발밑 윤곽선이 아래 칸 꼭대기에 '︶' 모양으로 걸쳐 들어온 것."""
     x0, y0, x1, y1 = box
     w, h = x1 - x0, y1 - y0
     a = img.getchannel('A').crop(box)
@@ -125,43 +131,73 @@ def drop_edge_bits(img, box, keep_ratio=0.03):
         for sx in range(w):
             if seen[sy * w + sx] or px[sx, sy] <= 40:
                 continue
-            stack, comp, edge = [(sx, sy)], [], False
+            stack, comp = [(sx, sy)], []
             seen[sy * w + sx] = 1
             while stack:
                 x, y = stack.pop()
                 comp.append((x, y))
-                if x in (0, w - 1) or y in (0, h - 1):
-                    edge = True
                 for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
                     if 0 <= nx < w and 0 <= ny < h and not seen[ny * w + nx] and px[nx, ny] > 40:
                         seen[ny * w + nx] = 1
                         stack.append((nx, ny))
-            if edge and len(comp) < total * keep_ratio:
+            xs = [x for x, _ in comp]
+            ys = [y for _, y in comp]
+            bx0, bx1, by0, by1 = min(xs), max(xs), min(ys), max(ys)
+            top_bottom = by0 == 0 or by1 == h - 1
+            left_right = bx0 == 0 or bx1 == w - 1
+            if not (top_bottom or left_right):
+                continue
+            thin = (top_bottom and by1 - by0 < sliver) or (left_right and bx1 - bx0 < sliver)
+            if thin or len(comp) < total * keep_ratio:
                 for x, y in comp:
                     img.putpixel((x0 + x, y0 + y), (0, 0, 0, 0))
 
 
-def grid_frames(alpha, width, height, cols, rows, use_rows=None):
-    """균일한 칸으로 자른 프레임. 내용 bbox 의 합집합으로 모든 칸을 같은 크기로 자른다(그림 위치 유지)."""
-    cw, ch = width / cols, height / rows
-    boxes = []
-    for r in range(rows):
-        for c in range(cols):
-            x0, y0 = round(c * cw), round(r * ch)
-            x1, y1 = round((c + 1) * cw), round((r + 1) * ch)
-            bb = alpha.crop((x0, y0, x1, y1)).getbbox()
-            boxes.append((x0, y0, bb))
-    used = [bb for i, (_, _, bb) in enumerate(boxes) if bb and (use_rows is None or i // cols in use_rows)]
-    ux0 = min(b[0] for b in used); uy0 = min(b[1] for b in used)
-    ux1 = max(b[2] for b in used); uy1 = max(b[3] for b in used)
-    grid = []
+def grid_frames(img, cols, rows, use_rows=None, baseline=False):
+    """균일한 칸으로 자른 프레임 그림들 [[Image | None]]. 내용 bbox 의 합집합(같은 창)으로 잘라 그림 위치를 유지한다.
+    칸마다 자기 칸 픽셀만 쓴다(이웃 칸 조각이 섞이지 않게).
+    baseline=True: 줄마다 발끝(내용 아래쪽의 가운데값)을 맞춘다. AI 가 만든 격자는 아래 줄로 갈수록
+                   캐릭터가 칸 안에서 위로 떠 있는 경우가 많아, 그대로 쓰면 그 줄 동작에서 붕 떠 보인다."""
+    W, H = img.size
+    cw, ch = W / cols, H / rows
+    cells = []
     for r in range(rows):
         row = []
         for c in range(cols):
-            x0, y0, _ = boxes[r * cols + c]
-            row.append((x0 + ux0, y0 + uy0, x0 + ux1, y0 + uy1))
+            cell = img.crop((round(c * cw), round(r * ch), round((c + 1) * cw), round((r + 1) * ch)))
+            row.append((cell, cell.getchannel('A').getbbox()))
+        cells.append(row)
+    used_rows = [r for r in range(rows) if (use_rows is None or r in use_rows) and any(bb for _, bb in cells[r])]
+    shift = {r: 0 for r in range(rows)}
+    if baseline:
+        base = {r: sorted(bb[3] for _, bb in cells[r] if bb)[sum(1 for _, bb in cells[r] if bb) // 2] for r in used_rows}
+        lowest = max(base.values())
+        shift.update({r: lowest - b for r, b in base.items()})
+    boxes = [(bb[0], bb[1] + shift[r], bb[2], bb[3] + shift[r]) for r in used_rows for _, bb in cells[r] if bb]
+    ux0 = min(b[0] for b in boxes); uy0 = min(b[1] for b in boxes)
+    ux1 = max(b[2] for b in boxes); uy1 = max(b[3] for b in boxes)
+    grid = []
+    for r in range(rows):
+        row = []
+        for cell, bb in cells[r]:
+            if not bb:
+                row.append(None)      # 빈 칸
+                continue
+            f = Image.new('RGBA', (ux1 - ux0, uy1 - uy0), (0, 0, 0, 0))
+            f.paste(cell, (-ux0, shift[r] - uy0))
+            row.append(f)
         grid.append(row)
     return grid
+
+
+def quantize(img):
+    """RGBA → 256색(알파 포함) 팔레트. 폰에서 받는 용량을 크게 줄인다."""
+    try:
+        import imagequant
+        return imagequant.quantize_pil_image(img, dithering_level=1.0, max_colors=256, min_quality=0, max_quality=100)
+    except ImportError:
+        print('  (imagequant 가 없어 Pillow 기본 방식으로 줄입니다. 더 깔끔하게: pip install imagequant)')
+        return img.quantize(colors=256, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.FLOYDSTEINBERG)
 
 
 def parse_kv(items, cast, what):
@@ -177,7 +213,7 @@ def parse_kv(items, cast, what):
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument('src', help='원본 스프라이트 시트 PNG (투명 배경)')
-    ap.add_argument('-o', '--out', required=True, help='출력 경로 접두사 (예: assets/sprites/cat)')
+    ap.add_argument('-o', '--out', help='출력 경로 접두사 (예: assets/sprites/cat)')
     ap.add_argument('--anim', action='append', help='name=ROW')
     ap.add_argument('--fps', action='append', help='name=FPS')
     ap.add_argument('--default-fps', type=float, default=8)
@@ -191,7 +227,18 @@ def main():
     ap.add_argument('--bg', choices=['none', 'white'], default='none', help='white: 흰 배경을 지움')
     ap.add_argument('--bg-tol', type=int, default=42, help='흰 배경으로 볼 밝기 차이 (그림자까지 지우려면 크게)')
     ap.add_argument('--grid', help='COLSxROWS: 균일한 칸으로 자르기 (예: 6x6)')
+    ap.add_argument('--quantize', action='store_true', help='256색 팔레트 PNG 로 저장 (용량 약 1/3)')
+    ap.add_argument('--baseline', action='store_true', help='--grid 와 함께: 줄마다 발끝을 맞춤 (아래 줄이 떠 보이는 시트)')
+    ap.add_argument('--shrink', action='store_true', help='이미 포장된 시트(src)를 256색으로 줄여 그 자리에 덮어쓰기만 한다')
     args = ap.parse_args()
+
+    if args.shrink:
+        before = os.path.getsize(args.src)
+        quantize(Image.open(args.src).convert('RGBA')).save(args.src, optimize=True)
+        print(f'줄임: {args.src} {before // 1024}KB → {os.path.getsize(args.src) // 1024}KB')
+        return
+    if not args.out:
+        ap.error('-o/--out 이 필요합니다')
 
     img = Image.open(args.src).convert('RGBA')
     W, H = img.size
@@ -209,18 +256,14 @@ def main():
         for ri in range(gr):
             for ci in range(gc):
                 drop_edge_bits(img, (round(ci * W / gc), round(ri * H / gr), round((ci + 1) * W / gc), round((ri + 1) * H / gr)))
-        a = img.getchannel('A')
-        # 쓰는 행만 기준으로 칸 크기를 잡아 여백(특히 발밑)을 줄인다
+        # 쓰는 행만 기준으로 칸 크기를 잡아 여백(특히 발밑)을 줄인다. 빈 칸(그림 없는 칸)은 프레임에서 뺀다
         use_rows = set(parse_kv(args.anim, int, '--anim').values()) or None
-        grid = grid_frames(a, W, H, gc, gr, use_rows)
-        # 빈 칸(그림 없는 칸)은 프레임에서 뺀다
-        grid = [[f for i, f in enumerate(row) if a.crop((round(i * W / gc), round(ri * H / gr), round((i + 1) * W / gc), round((ri + 1) * H / gr))).getbbox()]
-                for ri, row in enumerate(grid)]
+        grid = [[f for f in row if f is not None] for row in grid_frames(img, gc, gr, use_rows, args.baseline)]
     else:
-        grid = detect(mask, W, H, args.min_gap, args.min_len)
+        grid = [[img.crop(b) for b in row] for row in detect(mask, W, H, args.min_gap, args.min_len)]
     print(f'감지: {len(grid)}행')
     for i, frames in enumerate(grid):
-        sizes = ' '.join(f'{x1 - x0}x{y1 - y0}' for x0, y0, x1, y1 in frames)
+        sizes = ' '.join(f'{f.width}x{f.height}' for f in frames)
         print(f'  row{i}: {len(frames)}프레임  [{sizes}]')
     if args.dry_run:
         return
@@ -236,8 +279,8 @@ def main():
             sys.exit(f'{name}: row {row} 없음 (0..{len(grid) - 1})')
 
     used = [(name, grid[row]) for name, row in anim_rows.items()]
-    cell_w = max(x1 - x0 for _, fr in used for x0, _, x1, _ in fr) + args.pad * 2
-    cell_h = max(y1 - y0 for _, fr in used for _, y0, _, y1 in fr) + args.pad * 2
+    cell_w = max(f.width for _, fr in used for f in fr) + args.pad * 2
+    cell_h = max(f.height for _, fr in used for f in fr) + args.pad * 2
     cols = max(len(fr) for _, fr in used)
 
     # 배율은 프레임마다 적용해 셀 크기를 정수로 유지한다
@@ -249,8 +292,7 @@ def main():
     sheet = Image.new('RGBA', (cell_w * cols, cell_h * len(used)), (0, 0, 0, 0))
     meta_anims = {}
     for out_row, (name, frames) in enumerate(used):
-        for i, (x0, y0, x1, y1) in enumerate(frames):
-            crop = img.crop((x0, y0, x1, y1))
+        for i, crop in enumerate(frames):
             if sc != 1.0:
                 crop = crop.resize((max(1, round(crop.width * sc)), max(1, round(crop.height * sc))), resample)
             # 하단 중앙 정렬: 발이 셀 바닥(pad 위)에 닿도록
@@ -265,6 +307,8 @@ def main():
 
     os.makedirs(os.path.dirname(args.out) or '.', exist_ok=True)
     png_path = args.out + '.png'
+    if args.quantize:
+        sheet = quantize(sheet)
     sheet.save(png_path, optimize=True)
     meta = {
         'src': os.path.basename(png_path),

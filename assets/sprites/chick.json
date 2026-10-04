@@ -1,7 +1,7 @@
 {
   "src": "chick.png",
-  "frameW": 116,
-  "frameH": 166,
+  "frameW": 166,
+  "frameH": 168,
   "anims": {
     "walk": {
       "row": 0,
@@ -15,6 +15,21 @@
     },
     "fun": {
       "row": 2,
+      "frames": 6,
+      "fps": 8
+    },
+    "feel": {
+      "row": 3,
+      "frames": 6,
+      "fps": 8
+    },
+    "item": {
+      "row": 4,
+      "frames": 6,
+      "fps": 8
+    },
+    "hold": {
+      "row": 5,
       "frames": 6,
       "fps": 8
     }

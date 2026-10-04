@@ -13,24 +13,33 @@ export const SPRITES = {
       surprise: { row: 3, frames: 6, fps: 8 },
     },
   },
+  // 손님 시트 행: walk=걷기, sit=앉은 표정, fun=걱정·긁적·하트·만세, feel=놀람·뾰로통(울음·화남은 안 씀),
+  //            item=좋아하는 간식(사과·당근·뼈다귀…) 줍기·먹기·졸기, hold=간식 들고 있기(마지막 칸은 반짝)
+  // 거북이는 sit 에 미역을 들고 있고, item 칸 순서가 달라요 (서기·먹기·안기·졸기·뒷모습·반짝)
   tiger: {
     src: 'tiger.png',
-    frameW: 162,
-    frameH: 180,
+    frameW: 167,
+    frameH: 183,
     anims: {
       walk: { row: 0, frames: 6, fps: 10 },
       giggle: { row: 1, frames: 6, fps: 8 },
       happy: { row: 2, frames: 6, fps: 5 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+      hold: { row: 5, frames: 6, fps: 8 },
     },
   },
   rabbit: {
     src: 'rabbit.png',
-    frameW: 146,
-    frameH: 166,
+    frameW: 149,
+    frameH: 165,
     anims: {
       walk: { row: 0, frames: 6, fps: 10 },
       sit: { row: 1, frames: 6, fps: 8 },
       fun: { row: 2, frames: 6, fps: 8 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+      hold: { row: 5, frames: 6, fps: 8 },
     },
   },
   bear: {
@@ -41,36 +50,73 @@ export const SPRITES = {
       walk: { row: 0, frames: 6, fps: 10 },
       sit: { row: 1, frames: 6, fps: 8 },
       fun: { row: 2, frames: 6, fps: 8 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+      hold: { row: 5, frames: 6, fps: 8 },
     },
   },
   shiba: {
     src: 'shiba.png',
-    frameW: 121,
-    frameH: 166,
+    frameW: 151,
+    frameH: 167,
     anims: {
       walk: { row: 0, frames: 6, fps: 10 },
       sit: { row: 1, frames: 6, fps: 8 },
       fun: { row: 2, frames: 6, fps: 8 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+      hold: { row: 5, frames: 6, fps: 8 },
     },
   },
   chick: {
     src: 'chick.png',
-    frameW: 116,
-    frameH: 166,
+    frameW: 166,
+    frameH: 168,
     anims: {
       walk: { row: 0, frames: 6, fps: 10 },
       sit: { row: 1, frames: 6, fps: 8 },
       fun: { row: 2, frames: 6, fps: 8 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+      hold: { row: 5, frames: 6, fps: 8 },
     },
   },
   chipmunk: {
     src: 'chipmunk.png',
-    frameW: 128,
-    frameH: 166,
+    frameW: 147,
+    frameH: 165,
     anims: {
       walk: { row: 0, frames: 6, fps: 10 },
       sit: { row: 1, frames: 6, fps: 8 },
       fun: { row: 2, frames: 6, fps: 8 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+      hold: { row: 5, frames: 6, fps: 8 },
+    },
+  },
+  turtle: {
+    src: 'turtle.png',
+    frameW: 152,
+    frameH: 163,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      sit: { row: 1, frames: 6, fps: 8 },
+      fun: { row: 2, frames: 6, fps: 8 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+    },
+  },
+  panda: {
+    src: 'panda.png',
+    frameW: 150,
+    frameH: 154,
+    anims: {
+      walk: { row: 0, frames: 6, fps: 10 },
+      sit: { row: 1, frames: 6, fps: 8 },
+      fun: { row: 2, frames: 6, fps: 8 },
+      feel: { row: 3, frames: 6, fps: 8 },
+      item: { row: 4, frames: 6, fps: 8 },
+      hold: { row: 5, frames: 6, fps: 8 },
     },
   },
   penguin: {
@@ -126,7 +172,7 @@ export function headOf(sheetName, animName, frame, scale = 1, flip = false) {
 
 const SPRITE_DIR = 'assets/sprites/';
 // 그림을 바꾸면 올린다 (폰 캐시에 예전 그림이 남지 않게)
-const SPRITE_VERSION = 8;
+const SPRITE_VERSION = 9;
 
 // 시트 이미지를 불러와 SPRITES[name].image 에 붙인다. names 를 주면 그 시트만 (페이지마다 필요한 것만).
 export function loadSprites(names = Object.keys(SPRITES)) {
