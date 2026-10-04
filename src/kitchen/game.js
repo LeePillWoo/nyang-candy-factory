@@ -1,8 +1,11 @@
-// 냥냥 주방 — 요리사가 직접 걸어 다니며 요리하고 배달하는 주방 게임.
-//   ① 만두 상자를 누르면 요리사가 걸어가서 만두를 집는다 (누른 횟수만큼 1개씩 / 5개씩)
-//   ② 불(화덕)을 누르면 가서 팬에 올려 굽는다 — 굽는 동안 다른 일을 할 수 있다
+// 냥냥 주방 — 요리사를 조이스틱으로 움직여 요리하고 배달하는 주방 게임.
+//   조이스틱: 화면 아무 곳이나 누르면 그 자리에 생기고, 밀면 요리사가 걷는다 (2인: 화면 왼쪽 = 1P, 오른쪽 = 2P)
+//   물건·손님은 요리사가 '가까이' 있을 때만 눌러서 쓸 수 있다.
+//   ① 만두 상자 옆에서 상자를 누른 횟수만큼 집기 (1개씩 / 5개씩)
+//   ② 불(화덕) 옆에서 눌러 팬에 올려 굽기 — 굽는 동안 다른 일을 할 수 있다
 //   ③ 다 구워지면(띵!) 팬을 눌러 접시를 든다
-//   ④ 손님을 누르면 걸어가서 배달 — 만두 수가 그 손님 주문의 답과 같으면 성공
+//   ④ 손님 앞으로 가서 손님을 누르면 배달 — 만두 수가 그 손님 주문의 답과 같으면 성공
+//   PC: 1P = WASD + 스페이스(누르기), 2P = 방향키 + 엔터 (혼자면 방향키도 1P)
 //   틀려도 벌 없음: 손님이 "이건 아니에요" 하고, 다른 손님에게 주거나 버리고 다시 하면 된다.
 //   자기 요리사를 누르면 든 만두를 하나 내려놓는다(너무 많이 집었을 때).
 //   덤: 콤보 → 피버(코인 2배), VIP 손님 👑, 처음에는 손가락 안내, 모드별 최고 기록.
@@ -18,7 +21,10 @@ const SHIFT = 150;            // 한 판(영업 시간), 초
 const COOK_TIME = 3;          // 굽는 시간, 초
 const PATIENCE = 45;          // 손님 기다림 막대(다 줄어도 떠나지 않음 — 빨리 주면 보너스만)
 const CAP = 20;               // 한 번에 들 수 있는 만두
-const CHEF_SPEED = 560;       // 요리사 걷는 빠르기 (px/초)
+const CHEF_SPEED = 470;       // 요리사 걷는 빠르기 (조이스틱 끝까지 밀었을 때, px/초)
+const STICK_R = 70;           // 조이스틱 반지름
+const STICK_DEAD = 14;        // 이만큼 밀어야 걷기 시작 (그보다 짧게 누르면 '누르기')
+const NEAR = 64;              // 물건과 이만큼 가까워야 눌러서 쓸 수 있다
 const CUST_SPEED = 300;       // 손님 걷는 빠르기
 const SEATS = { 1: 3, 2: 4 }; // 계산대 자리 수
 const STAR_AT = { 1: [3, 5, 8], 2: [4, 7, 10] };
@@ -222,18 +228,56 @@ class KitchenGame {
     }
     this.chefs.forEach((ch, i) => {
       const st = this.L.starts[i] || this.L.starts[0];
-      ch.x = st.x; ch.y = st.y; ch.target = null; ch.queue = [];
+      ch.x = st.x; ch.y = st.y;
     });
   }
 
   // ── 입력 ────────────────────────────────────────────
   bindUI() {
     document.addEventListener('pointerdown', () => unlockAudio(), { capture: true });
+    // 떠다니는 조이스틱: 누른 자리에 생기고, 밀면 걷고, 짧게 누르면(탭) 물건·손님 누르기. 손가락마다 따로
+    this.sticks = new Map();
+    const toStage = (e) => {
+      const r = this.canvas.getBoundingClientRect();
+      return { x: (e.clientX - r.left) / r.width * W, y: (e.clientY - r.top) / r.height * H };
+    };
     this.canvas.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      const r = this.canvas.getBoundingClientRect();
-      this.tap((e.clientX - r.left) / r.width * W, (e.clientY - r.top) / r.height * H);
+      if (this.state !== 'play') return;
+      try { this.canvas.setPointerCapture(e.pointerId); } catch { /* 지원 안 함 */ }
+      const p = toStage(e);
+      const chef = this.players === 2 && p.x >= W / 2 ? 1 : 0;
+      this.sticks.set(e.pointerId, { ox: p.x, oy: p.y, x: p.x, y: p.y, chef, drag: false, t0: performance.now() });
     });
+    this.canvas.addEventListener('pointermove', (e) => {
+      const st = this.sticks.get(e.pointerId);
+      if (!st) return;
+      const p = toStage(e);
+      st.x = p.x; st.y = p.y;
+      if (!st.drag && Math.hypot(p.x - st.ox, p.y - st.oy) > STICK_DEAD) st.drag = true;
+    });
+    const end = (e) => {
+      const st = this.sticks.get(e.pointerId);
+      if (!st) return;
+      this.sticks.delete(e.pointerId);
+      if (!st.drag && e.type === 'pointerup' && performance.now() - st.t0 < 700) this.tap(st.ox, st.oy);
+    };
+    this.canvas.addEventListener('pointerup', end);
+    this.canvas.addEventListener('pointercancel', end);
+
+    // 키보드 (PC): 1P WASD + 스페이스, 2P 방향키 + 엔터
+    this.keys = new Set();
+    window.addEventListener('keydown', (e) => {
+      const k = e.key.toLowerCase();
+      if (this.state !== 'play') return;
+      if (k.startsWith('arrow') || k === ' ') e.preventDefault();
+      this.keys.add(k);
+      if (e.repeat) return;
+      if (k === ' ' || k === 'e') this.interact(0);
+      else if (k === 'enter') this.interact(this.players === 2 ? 1 : 0);
+    });
+    window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
+    window.addEventListener('blur', () => this.keys.clear());
     document.querySelectorAll('.player-pick').forEach((b) => b.addEventListener('click', () => {
       sfx.tap();
       this.players = Number(b.dataset.players);
@@ -303,8 +347,9 @@ class KitchenGame {
     this.floats = [];
     this.customers = [];
     this.L = makeLayout(this.players, PORTRAIT);
+    this.sticks.clear();
     this.chefs = this.L.starts.slice(0, this.players).map((s, p) => ({
-      p, ...CHEFS[p], x: s.x, y: s.y, flip: false, carry: null, target: null, queue: [],
+      p, ...CHEFS[p], x: s.x, y: s.y, flip: false, carry: null, moved: false,
       mood: 'idle', moodT: 0, walking: false, served: 0, say: null, sayT: 0,
     }));
     $('#menu').hidden = true;
@@ -316,16 +361,15 @@ class KitchenGame {
     $('#served-count').textContent = 0;
     this.renderCombo();
     this.renderClock();
-    speak(this.players === 2 ? '냥냥 주방 문 열었어요! 둘이 힘을 모아요!' : '냥냥 주방 문 열었어요!');
+    speak(this.players === 2 ? '냥냥 주방 문 열었어요! 화면을 누르고 밀어서 움직여요. 둘이 힘을 모아요!' : '냥냥 주방 문 열었어요! 화면을 누르고 밀어서 움직여요.');
   }
 
-  // ── 누르기 → 요리사에게 일 시키기 ─────────────────────
+  // ── 누르기 (요리사가 가까이 있을 때만) ─────────────────
   tap(x, y) {
     if (this.state !== 'play') return;
-    const pt = { x, y };
     // 1) 요리사가 든 쟁반 (생만두를 하나 내려놓기 — 너무 많이 집었을 때)
     for (const ch of this.chefs) {
-      const r = ch.carry && ch.trayRect;
+      const r = ch.carry && !ch.carry.cooked && ch.trayRect;
       if (r && x > r.x - 10 && x < r.x + r.w + 30 && y > r.y - 20 && y < r.y + r.h + 10) {
         if (!ch.carry.cooked) {
           ch.carry.n -= 1;
@@ -340,7 +384,9 @@ class KitchenGame {
     for (const o of this.L.objs) {
       if (Math.abs(x - o.x) < o.w / 2 + 14 && Math.abs(y - o.y) < o.h / 2 + 20) {
         const ch = this.chefs[o.owner];
-        if (ch) this.useObject(ch, o);
+        if (!ch) return;
+        if (this.isNear(ch, o)) this.useObject(ch, o);
+        else { this.chefSay(ch, '가까이 가서 눌러요!'); o.pingT = 1.2; }
         return;
       }
     }
@@ -350,99 +396,79 @@ class KitchenGame {
       const b = c.bubble;
       const onBubble = b && x > b.x - 8 && x < b.x + b.w + 8 && y > b.y - 8 && y < b.y + b.h + 16;
       const onBody = Math.abs(x - c.x) < 60 && y > c.y - this.L.custH && y < c.y + 30;
-      if (onBubble || onBody) { this.tapCustomer(c, pt); return; }
+      if (onBubble || onBody) { this.tapCustomer(c); return; }
     }
   }
 
-  // 줄 서 있는 일을 다 하고 나면 손에 뭘 들고 있을지 (누를 때 판단용)
-  futureCarry(ch) {
-    let c = ch.carry ? { ...ch.carry } : null;
-    for (const task of [ch.target, ...ch.queue]) {
-      if (!task) continue;
-      if (task.act === 'grab') c = c && c.cooked ? c : { n: Math.min(CAP, (c ? c.n : 0) + task.n), cooked: false };
-      else if (task.act === 'cook' || task.act === 'trash' || task.act === 'deliver') c = null;
-      else if (task.act === 'pick') c = { n: task.obj.n, cooked: true };
+  // 요리사 발 ↔ 물건 사각형 거리
+  isNear(ch, o) {
+    const dx = Math.max(Math.abs(ch.x - o.x) - o.w / 2, 0);
+    const dy = Math.max(Math.abs(ch.y - o.y) - o.h / 2, 0);
+    return Math.hypot(dx, dy) < NEAR;
+  }
+
+  // 손님 앞 (계산대 가까이, 좌우로 손님 근처)
+  nearCustomer(ch, c) {
+    return Math.abs(ch.x - c.x) < 120 && ch.y < this.L.counterY + 260;
+  }
+
+  // 키보드 '누르기': 가까운 손님(구운 접시를 들었을 때) → 가까운 물건
+  interact(i) {
+    const ch = this.chefs[i];
+    if (!ch || this.state !== 'play') return;
+    if (ch.carry && ch.carry.cooked) {
+      const c = this.customers.filter((q) => q.state === 'wait' && this.nearCustomer(ch, q)).sort((a, b) => Math.abs(a.x - ch.x) - Math.abs(b.x - ch.x))[0];
+      if (c) { this.deliver(ch, c); return; }
     }
-    return c;
+    const o = this.L.objs.filter((q) => q.owner === ch.p && this.isNear(ch, q)).sort((a, b) => dist(ch, a) - dist(ch, b))[0];
+    if (o) this.useObject(ch, o);
+    else this.chefSay(ch, '가까이 가서 눌러요!');
   }
 
   useObject(ch, o) {
-    const idle = !ch.target && !ch.queue.length;
-    const carry = this.futureCarry(ch);
     if (o.kind === 'box') {
-      if (carry && carry.cooked) { this.chefSay(ch, '구운 만두부터 배달해요!'); return; }
-      if (idle && dist(ch, o.use) < 14) { this.grab(ch, o, o.amount); return; }
-      this.goTo(ch, o.use, { act: 'grab', obj: o, n: o.amount });
+      if (ch.carry && ch.carry.cooked) { this.chefSay(ch, '구운 만두부터 배달해요!'); return; }
+      this.grab(ch, o, o.amount);
     } else if (o.kind === 'stove') {
-      const queued = [ch.target, ...ch.queue].some((t) => t && t.obj === o);
-      if (o.state === 'empty' && !queued) {
-        if (!carry || carry.cooked) { this.chefSay(ch, carry ? '손이 꽉 찼어요' : '만두를 먼저 담아요'); return; }
-        this.goTo(ch, o.use, { act: 'cook', obj: o });
-      } else if (o.state === 'done' && !queued) {
-        if (carry) { this.chefSay(ch, '손이 꽉 찼어요'); return; }
-        this.goTo(ch, o.use, { act: 'pick', obj: o });
+      if (o.state === 'empty') {
+        if (!ch.carry || ch.carry.cooked) { this.chefSay(ch, ch.carry ? '손이 꽉 찼어요' : '만두를 먼저 담아요'); return; }
+        o.state = 'cooking'; o.n = ch.carry.n; o.t = 0;
+        ch.carry = null;
+        sfx.machine();
+        this.float(o.x, o.y - o.h / 2 - 10, '지글지글', '#ff9a3c', 26);
+      } else if (o.state === 'cooking') {
+        this.chefSay(ch, '지글지글 굽는 중!');
       } else {
-        this.chefSay(ch, o.state === 'cooking' ? '지글지글 굽는 중!' : '벌써 가는 중!');
+        if (ch.carry) { this.chefSay(ch, '손이 꽉 찼어요'); return; }
+        ch.carry = { n: o.n, cooked: true };
+        o.state = 'empty'; o.n = 0; o.t = 0;
+        sfx.hop();
       }
     } else if (o.kind === 'trash') {
-      if (!carry) return;
-      this.goTo(ch, o.use, { act: 'trash', obj: o });
-    }
-  }
-
-  tapCustomer(c, pt) {
-    // 구운 접시를 든 요리사가 배달 (둘 다 들었으면 수가 맞는 쪽 → 아니면 가까운 쪽)
-    const holders = this.chefs.filter((ch) => ch.carry && ch.carry.cooked);
-    let ch = null;
-    if (holders.length === 1) ch = holders[0];
-    else if (holders.length > 1) {
-      ch = holders.find((h) => h.carry.n === c.p.answer) || holders.slice().sort((a, b) => Math.abs(a.x - pt.x) - Math.abs(b.x - pt.x))[0];
-    }
-    if (ch && [ch.target, ...ch.queue].some((t) => t && t.act === 'deliver')) ch = null;
-    if (!ch) {
-      // 아무도 구운 만두가 없으면 주문을 읽어 준다
-      this.say(this.problemWords(c.p), true);
-      c.shakeT = 0.3;
-      const raw = this.chefs.find((h) => h.carry && !h.carry.cooked);
-      if (raw) this.chefSay(raw, '먼저 불에 구워요!');
-      return;
-    }
-    this.goTo(ch, { x: clamp(c.x, 60, W - 60), y: this.L.deliverY }, { act: 'deliver', cust: c });
-  }
-
-  // 할 일을 줄 세운다: 걷는 중에 눌러도 순서대로 (같은 상자를 연달아 누르면 한 번에 모아 집기)
-  goTo(ch, pos, task) {
-    const last = ch.queue.length ? ch.queue[ch.queue.length - 1] : ch.target;
-    if (task.act === 'grab' && last && last.act === 'grab' && last.obj === task.obj) { last.n += task.n; sfx.tap(); return; }
-    if (ch.queue.length >= 4) { this.chefSay(ch, '하나씩 천천히!'); return; }
-    const t = { x: pos.x, y: Math.max(this.L.minY, pos.y), ...task };
-    if (!ch.target) ch.target = t; else ch.queue.push(t);
-    sfx.tap();
-  }
-
-  // ── 도착해서 하는 일 ──────────────────────────────────
-  arrive(ch, task) {
-    const o = task.obj;
-    if (task.act === 'grab') this.grab(ch, o, task.n);
-    else if (task.act === 'cook') {
-      if (o.state !== 'empty' || !ch.carry || ch.carry.cooked) return;
-      o.state = 'cooking'; o.n = ch.carry.n; o.t = 0;
-      ch.carry = null;
-      sfx.machine();
-      this.float(o.x, o.y - o.h / 2 - 10, '지글지글', '#ff9a3c', 26);
-    } else if (task.act === 'pick') {
-      if (o.state !== 'done' || ch.carry) return;
-      ch.carry = { n: o.n, cooked: true };
-      o.state = 'empty'; o.n = 0; o.t = 0;
-      sfx.hop();
-    } else if (task.act === 'trash') {
       if (!ch.carry) return;
       ch.carry = null;
       sfx.give();
       this.float(o.x, o.y - o.h / 2 - 10, '쏙!', '#5ccf95', 28);
-    } else if (task.act === 'deliver') {
-      this.deliver(ch, task.cust);
     }
+  }
+
+  tapCustomer(c) {
+    // 손님 앞에 와 있는, 구운 접시를 든 요리사가 배달 (둘이면 수가 맞는 쪽 → 가까운 쪽)
+    const holders = this.chefs.filter((ch) => ch.carry && ch.carry.cooked);
+    const near = holders.filter((ch) => this.nearCustomer(ch, c));
+    if (!near.length) {
+      // 주문을 읽어 주고, 접시를 든 요리사가 멀리 있으면 알려 준다
+      this.say(this.problemWords(c.p), true);
+      c.shakeT = 0.3;
+      if (holders.length) this.chefSay(holders[0], '손님 앞으로 가요!');
+      else {
+        const raw = this.chefs.find((h) => h.carry && !h.carry.cooked);
+        if (raw) this.chefSay(raw, '먼저 불에 구워요!');
+      }
+      return;
+    }
+    const ch = near.find((h) => h.carry.n === c.p.answer) || near.sort((a, b) => Math.abs(a.x - c.x) - Math.abs(b.x - c.x))[0];
+    this.deliver(ch, c);
   }
 
   grab(ch, o, n) {
@@ -597,27 +623,41 @@ class KitchenGame {
     }
     this.customers = this.customers.filter((c) => !(c.state === 'leave' && c.x < this.L.door.x));
 
-    // 요리사 걷기
-    for (const ch of this.chefs) {
+    // 요리사 걷기 (조이스틱 · 키보드)
+    const want = this.chefs.map(() => ({ x: 0, y: 0 }));
+    for (const st of this.sticks.values()) {
+      if (!st.drag || !want[st.chef]) continue;
+      const dx = st.x - st.ox, dy = st.y - st.oy, d = Math.hypot(dx, dy) || 1;
+      const k = Math.min(1, d / STICK_R) / d;
+      want[st.chef] = { x: dx * k, y: dy * k };
+    }
+    const keyDir = (up, down, left, right) => {
+      const v = { x: 0, y: 0 };
+      if (up.some((k) => this.keys.has(k))) v.y -= 1;
+      if (down.some((k) => this.keys.has(k))) v.y += 1;
+      if (left.some((k) => this.keys.has(k))) v.x -= 1;
+      if (right.some((k) => this.keys.has(k))) v.x += 1;
+      const d = Math.hypot(v.x, v.y);
+      return d ? { x: v.x / d, y: v.y / d } : null;
+    };
+    const solo = this.players === 1;
+    const k1 = keyDir(solo ? ['w', 'arrowup'] : ['w'], solo ? ['s', 'arrowdown'] : ['s'], solo ? ['a', 'arrowleft'] : ['a'], solo ? ['d', 'arrowright'] : ['d']);
+    if (k1) want[0] = k1;
+    if (!solo) { const k2 = keyDir(['arrowup'], ['arrowdown'], ['arrowleft'], ['arrowright']); if (k2 && want[1]) want[1] = k2; }
+    this.chefs.forEach((ch, i) => {
       if (ch.moodT > 0) { ch.moodT -= dt; if (ch.moodT <= 0) ch.mood = 'idle'; }
       if (ch.sayT > 0) ch.sayT -= dt;
-      ch.walking = false;
-      if (!ch.target && ch.queue.length) ch.target = ch.queue.shift();
-      const tg = ch.target;
-      if (!tg) continue;
-      const dx = tg.x - ch.x, dy = tg.y - ch.y;
-      const d = Math.hypot(dx, dy);
-      const step = CHEF_SPEED * dt;
-      if (Math.abs(dx) > 2) ch.flip = dx < 0;
-      if (d <= step) {
-        ch.x = tg.x; ch.y = tg.y;
-        ch.target = null;
-        this.arrive(ch, tg);
-      } else {
-        ch.x += dx / d * step; ch.y += dy / d * step;
-        ch.walking = true;
-      }
-    }
+      const v = want[i];
+      const sp = Math.hypot(v.x, v.y);
+      ch.walking = sp > 0.12;
+      if (!ch.walking) return;
+      ch.moved = true;
+      ch.x += v.x * CHEF_SPEED * dt;
+      ch.y += v.y * CHEF_SPEED * dt;
+      if (Math.abs(v.x) > 0.1) ch.flip = v.x < 0;
+      this.collide(ch);
+    });
+    for (const o of this.L.objs) if (o.pingT > 0) o.pingT -= dt;
 
     // 굽기
     for (const o of this.L.objs) {
@@ -627,6 +667,20 @@ class KitchenGame {
     }
 
     if (this.clock <= 0) this.finish();
+  }
+
+  // 물건 몸통(발 닿는 부분)은 지나갈 수 없다 — 물건 뒤로는 돌아가서
+  collide(ch) {
+    const L = this.L;
+    ch.x = clamp(ch.x, 36, W - 36);
+    ch.y = clamp(ch.y, L.minY, H - 24);
+    for (const o of L.objs) {
+      const x0 = o.x - o.w / 2 + 4, x1 = o.x + o.w / 2 - 4;
+      const y0 = o.y - o.h / 2 + 34, y1 = o.y + o.h / 2 + 8;
+      if (ch.x <= x0 || ch.x >= x1 || ch.y <= y0 || ch.y >= y1) continue;
+      const push = [[ch.x - x0, 'l'], [x1 - ch.x, 'r'], [ch.y - y0, 'u'], [y1 - ch.y, 'd']].sort((a, b) => a[0] - b[0])[0][1];
+      if (push === 'l') ch.x = x0; else if (push === 'r') ch.x = x1; else if (push === 'u') ch.y = y0; else ch.y = y1;
+    }
   }
 
   renderClock() {
@@ -671,7 +725,9 @@ class KitchenGame {
 
     // 안내 손가락이 가리킬 곳
     const hints = this.state === 'play' ? this.chefs.map((ch) => this.hintFor(ch)) : [];
-    const glowing = new Set(hints.map((h) => h && h.obj).filter(Boolean));
+    const prompts = this.state === 'play' ? this.chefs.map((ch) => this.nearPrompt(ch)) : [];
+    const glowing = new Set([...hints, ...prompts].map((h) => h && h.obj).filter(Boolean));
+    for (const o of L.objs) if (o.pingT > 0) glowing.add(o);
 
     // 물건과 요리사를 앞뒤(발 높이) 순서로 — 물건 뒤에 선 요리사는 다리가 가려진다
     const items = [
@@ -697,37 +753,66 @@ class KitchenGame {
       if (ch.sayT > 0) D.drawTag(ctx, ch.x, ch.y - L.chefH - (ch.carry ? 110 : 16), ch.say, '#fff', 22);
     }
 
-    // 처음 몇 번은 다음에 누를 곳 안내
+    // 처음 몇 번은 다음에 갈 곳 안내 (가까이 와서 누를 수 있으면 그 이름표가 대신)
     hints.forEach((h, i) => {
       if (!h) return;
       const ch = this.chefs[i];
-      if (h.obj) D.drawFinger(ctx, h.obj.x, h.obj.y - h.obj.h / 2 - 14, t + i);
-      if (h.text && ch.sayT <= 0 && !ch.walking) D.drawTag(ctx, ch.x, ch.y - L.chefH - (ch.carry ? 110 : 16), h.text, '#fff3c4', 20);
+      if (h.obj && !(prompts[i] && prompts[i].obj === h.obj)) D.drawFinger(ctx, h.obj.x, h.obj.y - h.obj.h / 2 - 14, t + i);
+      if (h.text && ch.sayT <= 0 && !prompts[i]) D.drawTag(ctx, ch.x, ch.y - L.chefH - (ch.carry ? 110 : 16), h.text, '#fff3c4', 20);
+    });
+    prompts.forEach((pr, i) => {
+      if (!pr) return;
+      if (pr.obj) D.drawTag(ctx, pr.obj.x, pr.obj.y - pr.obj.h / 2 - 2 + Math.sin(t * 6) * 3, pr.text, '#ffe08a', 22);
+      else if (pr.cust && pr.cust.bubble) D.drawTag(ctx, pr.cust.x, pr.cust.y - 40, pr.text, '#ffe08a', 22);
     });
 
     for (const f of this.floats) D.drawFloat(ctx, f);
+
+    // 조이스틱
+    if (this.sticks) for (const st of this.sticks.values()) {
+      const ch = this.chefs[st.chef];
+      if (ch) D.drawStick(ctx, st, STICK_R, ch.ring);
+    }
   }
 
-  // 지금 할 일 안내 (배달 성공 HINT_UNTIL 번까지)
+  // 지금 할 일 안내 (배달 성공 HINT_UNTIL 번까지): 손가락이 가리킬 물건 + 요리사 머리 위 글
   hintFor(ch) {
-    if (ch.served >= HINT_UNTIL || ch.target || ch.queue.length) return null;
+    if (ch.served >= HINT_UNTIL) return null;
+    if (!ch.moved) return { text: '화면을 꾹 누르고 밀어서 걸어요!' };
     const mine = this.L.objs.filter((o) => o.owner === ch.p);
     const stoves = mine.filter((o) => o.kind === 'stove');
-    if (ch.carry && ch.carry.cooked) return { text: '알맞은 손님을 눌러 배달!' };
+    if (ch.carry && ch.carry.cooked) return { text: '알맞은 손님 앞으로 가서 손님을 눌러요' };
     const done = stoves.find((o) => o.state === 'done');
-    if (done && !ch.carry) return { obj: done, text: '다 구웠어요! 팬을 눌러요' };
+    if (done && !ch.carry) return { obj: done, text: '다 구웠어요! 화덕으로 가서 팬을 눌러요' };
     if (ch.carry) {
       const free = stoves.find((o) => o.state === 'empty');
-      return free ? { obj: free, text: '주문만큼 담았으면 불에 올려요' } : null;
+      return free ? { obj: free, text: '주문만큼 담았으면 화덕으로!' } : null;
     }
     if (stoves.some((o) => o.state === 'cooking')) return null;
-    return { obj: mine.find((o) => o.kind === 'box' && o.amount === 1), text: '상자를 눌러 만두를 담아요' };
+    return { obj: mine.find((o) => o.kind === 'box' && o.amount === 1), text: '만두 상자로 가서 상자를 눌러요' };
+  }
+
+  // 지금 가까이 있어서 '눌러서 쓸 수 있는' 것 (빛나고 이름표가 뜬다)
+  nearPrompt(ch) {
+    if (ch.carry && ch.carry.cooked) {
+      const c = this.customers.find((q) => q.state === 'wait' && this.nearCustomer(ch, q));
+      if (c) return { cust: c, text: '손님을 눌러 배달!' };
+    }
+    for (const o of this.L.objs) {
+      if (o.owner !== ch.p || !this.isNear(ch, o)) continue;
+      const raw = ch.carry && !ch.carry.cooked;
+      if (o.kind === 'box' && !(ch.carry && ch.carry.cooked)) return { obj: o, text: `눌러서 +${o.amount}` };
+      if (o.kind === 'stove' && o.state === 'empty' && raw) return { obj: o, text: '눌러서 굽기' };
+      if (o.kind === 'stove' && o.state === 'done' && !ch.carry) return { obj: o, text: '눌러서 들기' };
+      if (o.kind === 'trash' && ch.carry) return { obj: o, text: '눌러서 버리기' };
+    }
+    return null;
   }
 
   finish() {
     this.state = 'over';
     const run = this.runId;
-    for (const ch of this.chefs) { ch.target = null; ch.queue = []; }
+    this.sticks.clear();
     sfx.fanfare();
     this.banner('영업 끝! 🛎', 2);
     speak('영업 끝! 수고했어요!');

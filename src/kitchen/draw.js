@@ -358,3 +358,21 @@ export function drawFloat(ctx, f) {
   ctx.fillText(f.text, f.x, y);
   ctx.restore();
 }
+
+// 떠다니는 조이스틱: 누른 자리(받침) + 민 쪽(손잡이)
+export function drawStick(ctx, st, R, color) {
+  const dx = st.x - st.ox, dy = st.y - st.oy, d = Math.hypot(dx, dy);
+  const k = d > R ? R / d : 1;
+  ctx.save();
+  ctx.globalAlpha = 0.35;
+  ctx.fillStyle = '#ffffff';
+  ctx.beginPath(); ctx.arc(st.ox, st.oy, R, 0, Math.PI * 2); ctx.fill();
+  ctx.globalAlpha = 0.8;
+  ctx.lineWidth = 5; ctx.strokeStyle = color;
+  ctx.stroke();
+  ctx.globalAlpha = 0.9;
+  ctx.fillStyle = color;
+  ctx.beginPath(); ctx.arc(st.ox + dx * k, st.oy + dy * k, R * 0.45, 0, Math.PI * 2); ctx.fill();
+  line(ctx, 4); ctx.stroke();
+  ctx.restore();
+}
