@@ -9,26 +9,24 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=13">
-  <link rel="stylesheet" href="kitchen.css?v=13">
+  <link rel="stylesheet" href="style.css?v=14">
+  <link rel="stylesheet" href="kitchen.css?v=14">
 </head>
 <body class="kitchen">
   <div id="stage">
+    <!-- 주방 장면 (손님 · 요리사 · 상자 · 불 · 쓰레기통) — 화면을 눌러 요리사를 움직인다 -->
+    <canvas id="scene"></canvas>
+
     <!-- 상단 HUD -->
     <div id="hud">
       <a id="btn-games" class="chip" href="./" aria-label="게임 고르기 (처음 화면)">🏠</a>
       <button id="btn-home" class="chip" aria-label="뒤로 (게임 로비)" hidden>🔙</button>
       <button id="btn-sound" class="chip" aria-label="소리">🔊</button>
       <div id="clock" class="chip" hidden><span aria-hidden="true">⏱</span><b id="clock-text">2:30</b></div>
+      <div id="combo" class="chip" hidden></div>
       <div id="served" class="chip" hidden><span aria-hidden="true">🥟</span><b id="served-count">0</b></div>
       <div id="coins" class="chip coins"><span class="coin"></span><b id="coin-count">0</b></div>
     </div>
-
-    <!-- 주문서 줄 (손님 + 문제) -->
-    <div id="rail" hidden></div>
-
-    <!-- 요리사 자리 (1인: 하나, 2인: 둘) — game.js 가 채운다 -->
-    <div id="stations" hidden></div>
 
     <div id="banner" hidden></div>
 
@@ -36,12 +34,18 @@
     <section id="menu" class="screen">
       <div class="panel">
         <h1 class="title"><span>냥냥</span> 주방</h1>
-        <p class="sub">주문서를 보고 만두를 알맞게 담아서 🔥 굽고 🛎 내보내요!</p>
+        <p class="sub">손님 주문만큼 만두를 구워서 배달해요!</p>
+        <ol class="steps">
+          <li><b>📦</b>상자를 눌러 만두 담기</li>
+          <li><b>🔥</b>불을 눌러 굽기</li>
+          <li><b>🍳</b>다 구우면 팬 들기</li>
+          <li><b>🐻</b>손님을 눌러 배달!</li>
+        </ol>
         <div class="players" role="radiogroup" aria-label="몇 명이 할까요">
           <button class="player-pick" data-players="1" aria-checked="true"><span class="pp-icon">🐱</span><span>혼자 하기</span></button>
           <button class="player-pick" data-players="2" aria-checked="false"><span class="pp-icon">🐱🐧</span><span>둘이 하기</span></button>
         </div>
-        <p class="howto">둘이 하기: 한 화면을 반으로 나눠 같은 주문을 함께 처리해요</p>
+        <p class="howto duo-note">둘이 하기: 왼쪽은 1P 냥이, 오른쪽은 2P 펭귄의 주방. 손님은 함께 받아요!</p>
         <div class="modes">
           <button class="btn mode add" data-mode="add"><span class="sign">+</span><span>덧셈</span></button>
           <button class="btn mode sub" data-mode="sub"><span class="sign">−</span><span>뺄셈</span></button>
@@ -59,6 +63,7 @@
         <div class="stars"></div>
         <p class="served-line"></p>
         <p class="team-line"></p>
+        <p class="best-line"></p>
         <p class="earned"></p>
         <div class="row">
           <button class="btn go again">한 번 더!</button>
@@ -72,14 +77,15 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/audio.js": "./src/audio.js?v=13",
-      "./src/problems.js": "./src/problems.js?v=13",
-      "./src/viewport.js": "./src/viewport.js?v=13",
-      "./src/sprites.js": "./src/sprites.js?v=13",
-      "./src/characters.js": "./src/characters.js?v=13"
+      "./src/audio.js": "./src/audio.js?v=14",
+      "./src/problems.js": "./src/problems.js?v=14",
+      "./src/viewport.js": "./src/viewport.js?v=14",
+      "./src/sprites.js": "./src/sprites.js?v=14",
+      "./src/characters.js": "./src/characters.js?v=14",
+      "./src/kitchen/draw.js": "./src/kitchen/draw.js?v=14"
     }
   }
   </script>
-  <script type="module" src="src/kitchen/game.js?v=13"></script>
+  <script type="module" src="src/kitchen/game.js?v=14"></script>
 </body>
 </html>
