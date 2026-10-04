@@ -94,6 +94,8 @@ if (!CanvasRenderingContext2D.prototype.roundRect) {
 }
 
 // 캐릭터 한 프레임: (x, y) = 발 아래 중앙, 키 h, hat = 상점 모자 (요리사만)
+const CUST_REF_H = 190;   // 손님 키 h 일 때 배율 1 이 되는 기준 (곰돌이 1.25 → 계산대 손님 키 180 에서 약 1.18배)
+
 function drawCharacter(ctx, key, animName, t, x, y, h, flip = false, hat = null) {
   ctx.save();
   ctx.translate(x, y);
@@ -119,10 +121,12 @@ function drawCharacter(ctx, key, animName, t, x, y, h, flip = false, hat = null)
     const i = Math.floor(t * fps);
     const frame = def.seq ? def.seq[i % def.seq.length] : i % anim.frames;
     const faceFlip = c.faces === 'left' ? !flip : flip;
-    const sc = h / (sheet.frameH * 0.92);
+    // 손님은 동물마다 맞춘 배율(c.scale, 사탕 가게와 같은 값)로 — 시트 칸 크기(효과 여백)에 따라 크기가 달라지지 않게
+    const sc = key === 'nyang' ? h / (sheet.frameH * 0.92) : c.scale * h / CUST_REF_H;
     drawSpriteFrame(ctx, sheet, def.anim, frame, sc, faceFlip);
     const head = hat && headOf(c.sprite, def.anim, frame, sc, faceFlip);
     if (head) drawHat(ctx, hat, head.x, head.y, head.size, t, faceFlip);
+    if (def.zzz) D.drawZzz(ctx, (faceFlip ? -1 : 1) * h * def.zzz[0], -h * def.zzz[1], t, h / 180);
   }
   ctx.restore();
 }
@@ -548,6 +552,10 @@ class KitchenGame {
       if (c.tokens) c.helped = true;
       this.say(`${DISHES[c.dish].name}! ${words}`, true);
       c.shakeT = 0.3;
+      if (c.mood === 'sleep' || c.mood === 'think') {
+        if (c.mood === 'sleep') this.float(c.x, c.y - this.L.custH * 0.9, '깜짝!', '#ffd23f', 28);
+        c.mood = 'idle'; c.moodT = 2.5;   // 잠깐 깨서 주문을 다시 말해 준다
+      }
       if (holders.length) this.chefSay(holders[0], '손님 앞으로 가요!');
       else {
         const raw = this.chefs.find((h) => h.carry && !h.carry.cooked);
@@ -631,6 +639,7 @@ class KitchenGame {
     this.addCoins(coins);
     this.float(c.x, c.y - 90, `+${coins}`, '#ffd23f', 40);
     c.mood = 'happy'; c.plateN = n; c.plateDish = dish;
+    c.joy = smart || (c.p.review && !c.missed) ? 'love' : 'happy';   // 척척 · 다시 도전 성공이면 하트 뿅뿅
     // 배움 기록 · 미션
     if (c.kind === 'normal') {
       record(c.p, !c.missed);
@@ -652,6 +661,7 @@ class KitchenGame {
     if (n > left) {
       sfx.oops();
       c.shakeT = 0.5;
+      c.mood = 'sad'; c.moodT = 1.2;
       ch.mood = 'sad'; ch.moodT = 1;
       this.float(c.x, c.y - 70, '너무 많아요!', '#ff8fab', 28);
       this.say(c.got ? '너무 많아요! 받은 것 빼고 남은 만큼만 주세요' : '너무 많아요!', true);
@@ -673,7 +683,7 @@ class KitchenGame {
       this.banner('👑 대왕 손님 배불러요! 🎉', 2);
       sfx.fanfare();
       this.say('배불러요! 정말 고마워요!', true);
-      c.state = 'eat'; c.t = -1; c.mood = 'happy'; c.plateN = c.got; c.plateDish = dish;
+      c.state = 'eat'; c.t = -1; c.mood = 'happy'; c.joy = 'love'; c.plateN = c.got; c.plateDish = dish;
     } else {
       this.addCoins(1);
       sfx.give();
@@ -896,6 +906,14 @@ class KitchenGame {
     else c.note = null;
   }
 
+  // 손님 동작: 걷기 / 받고 기뻐하기 → 마지막엔 좋아하는 간식 들고 반짝 / 기다리는 기분(기본 · 긁적 · 꾸벅)
+  custAnim(c) {
+    if (c.state === 'walkin' || c.state === 'leave') return 'walk';
+    if (c.state === 'eat') return c.t < 0.9 ? c.joy || 'happy' : 'yay';
+    if (c.state === 'pay') return 'happy';
+    return c.mood;
+  }
+
   // ── 루프 ────────────────────────────────────────────
   update(dt) {
     this.time += dt;
@@ -940,7 +958,11 @@ class KitchenGame {
       } else if (c.state === 'wait') {
         c.bubbleT += dt;
         if (!this.pay && c.kind !== 'boss') c.patience = Math.max(0, c.patience - dt);
-        if (c.moodT <= 0) c.mood = c.patience / c.patienceMax > 0.2 ? 'idle' : 'eat';   // 오래 기다리면 꼼지락 (떠나지 않아요)
+        if (c.moodT <= 0) {
+          // 오래 기다리면 긁적긁적 → 꾸벅꾸벅 (떠나지는 않아요. 눌러 주면 깜짝 깨요)
+          const r = c.patience / c.patienceMax;
+          c.mood = r > 0.45 ? 'idle' : r > 0.12 ? 'think' : 'sleep';
+        }
       } else if (c.state === 'eat') {
         if (c.t > 1.8) { c.state = 'leave'; c.mood = 'walk'; seat.cust = null; seat.wait = 1.2; }
       } else if (c.state === 'leave') {
@@ -1036,7 +1058,7 @@ class KitchenGame {
     const custs = this.customers.slice().sort((a, b) => a.x - b.x);
     const seatGap0 = L.seats.length > 1 ? L.seats[1].x - L.seats[0].x : 300;
     for (const c of custs) {
-      const anim = c.state === 'walkin' || c.state === 'leave' ? 'walk' : c.state === 'eat' || c.state === 'pay' ? 'happy' : c.mood;
+      const anim = this.custAnim(c);
       const hh = L.custH * c.size * (c.vip ? 1.06 : 1);
       const back = c.state === 'leave';
       if (c.friends) {

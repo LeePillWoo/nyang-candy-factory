@@ -1,7 +1,7 @@
 {
-  "src": "rabbit.png",
-  "frameW": 149,
-  "frameH": 165,
+  "src": "turtle.png",
+  "frameW": 152,
+  "frameH": 163,
   "anims": {
     "walk": {
       "row": 0,
@@ -25,11 +25,6 @@
     },
     "item": {
       "row": 4,
-      "frames": 6,
-      "fps": 8
-    },
-    "hold": {
-      "row": 5,
       "frames": 6,
       "fps": 8
     }

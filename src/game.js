@@ -722,6 +722,7 @@ class Game {
       sfx.oops();
       const big = p.diff > 1;
       this.customer.say(big ? '같이 풀어 볼까?' : '같이 세어 볼까?', 2.2);
+      this.customer.play('think', 2.2);   // 손님도 갸우뚱 (긁적 · 물음표)
       this.cat.play('sad', 1.4);
       speak(big ? '괜찮아! 차근차근 같이 풀어 볼까?' : '괜찮아! 같이 세어 볼까?');
       await this.sleep(0.9);
@@ -760,7 +761,7 @@ class Game {
     this.addCoins(reward, (r.left - sr.left) / this.scale + 60, (r.top - sr.top) / this.scale - 50);
     speak(this.firstTry ? (p.review ? '다시 도전 성공! 딩동댕!' : '딩동댕! 정답이에요!') : '맞았어요! 잘했어요!');
     if (p.review && this.firstTry) this.customer.say('이번엔 맞혔다! 👍', 1.8);
-    this.customer.setAnim('happy');
+    this.customer.setAnim(this.firstTry ? 'love' : 'happy');   // 한 번에 맞히면 하트 뿅뿅
     this.cat.play('happy', 1.4);
     $('#order .order-expr').innerHTML = `${p.left}<span class="ans">${p.answer}</span>${p.right}`;
     await this.sleep(1.4);
@@ -908,7 +909,7 @@ class Game {
       cust.carry(drawBagIcon);
       sfx.give();
     }
-    cust.setAnim('happy');
+    cust.setAnim('yay');   // 좋아하는 간식을 들고 반짝!
     cust.say('고마워요!', 1.6);
     this.hearts(cust.x, CFLOOR - 70);
     await this.sleep(1.3);

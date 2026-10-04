@@ -1,7 +1,7 @@
 {
-  "src": "rabbit.png",
-  "frameW": 149,
-  "frameH": 165,
+  "src": "panda.png",
+  "frameW": 150,
+  "frameH": 154,
   "anims": {
     "walk": {
       "row": 0,

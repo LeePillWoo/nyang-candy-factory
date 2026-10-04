@@ -562,6 +562,26 @@ export function drawOrder(ctx, cx, bottom, maxW, c, t, opt = {}) {
   return { x, y, w, h };
 }
 
+// 꾸벅꾸벅 조는 손님 위에 Z Z Z (아래에서 위로 올라가며 흐려짐). s = 크기 배율
+export function drawZzz(ctx, x, y, t, s = 1) {
+  ctx.save();
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
+  for (let i = 0; i < 3; i++) {
+    const p = (t * 0.5 + i / 3) % 1;
+    ctx.globalAlpha = Math.sin(p * Math.PI);
+    ctx.font = `${Math.round((16 + p * 14) * s)}px ${FONT}`;
+    const px = x + (p * 22 + Math.sin(t * 2 + i) * 3) * s, py = y - p * 46 * s;
+    ctx.lineWidth = 5 * s;
+    ctx.strokeStyle = '#fff';
+    ctx.strokeText('Z', px, py);
+    ctx.fillStyle = '#5a6fd8';
+    ctx.fillText('Z', px, py);
+  }
+  ctx.restore();
+}
+
 // 다 먹는 동안 계산대 위 접시
 export function drawPlate(ctx, x, y, n, dish) {
   ctx.fillStyle = '#fff';

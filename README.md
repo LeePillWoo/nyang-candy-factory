@@ -55,8 +55,8 @@ python tools/build_single.py kitchen.html    # → dist/kitchen.html
 
 ### GitHub Pages 배포 시 버전 올리기
 
-GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `index.html`·`candy.html`·`penguin.html`·`kitchen.html` 안의 `?v=20` 을 **모두** 다음 숫자(`?v=21`)로 바꿔 주세요(CSS, 시작 스크립트, importmap 안의 모듈들). 새 모듈을 만들면 그 모듈을 쓰는 페이지의 importmap 에도 추가합니다.
-그래야 폰에서 예전 파일과 새 파일이 섞이지 않고 한꺼번에 새로 받아집니다. (스프라이트 그림은 `src/sprites.js` 의 `SPRITE_VERSION` 과 `index.html` CSS 의 `?v=8` 을 따로 올려요.)
+GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `index.html`·`candy.html`·`penguin.html`·`kitchen.html` 안의 `?v=21` 을 **모두** 다음 숫자(`?v=22`)로 바꿔 주세요(CSS, 시작 스크립트, importmap 안의 모듈들). 새 모듈을 만들면 그 모듈을 쓰는 페이지의 importmap 에도 추가합니다.
+그래야 폰에서 예전 파일과 새 파일이 섞이지 않고 한꺼번에 새로 받아집니다. (스프라이트 그림은 `src/sprites.js` 의 `SPRITE_VERSION`(지금 9) 과 `index.html` CSS 의 `?v=9` 를 따로 올려요.)
 
 기기에서 화면이 잘리거나 너무 크게 보이면 주소 끝에 `?debug` 를 붙여 열어 보세요(예: `.../nyang-candy-factory/candy.html?debug`). 사탕 공장은 화면 왼쪽 아래에 브라우저가 알려 주는 화면 크기와 실제로 쓴 크기가 표시됩니다. (`?debug` 는 자동 테스트용으로 `window.__game` 도 열어 줘요.)
 
@@ -141,7 +141,7 @@ GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 
 2. **재료 상자** 옆에서 상자를 누른 횟수만큼 집어요 — 왼쪽 칸은 1개, 오른쪽 칸은 묶음. 머리 위 쟁반에 음식 모양대로(10칸 판 · 꼬치 · 짝) 쌓여서 수가 한눈에 보여요. 너무 많이 집었으면 **쟁반을 눌러 하나씩 내려놓기**.
 3. **화덕** 옆에서 눌러 올리면 굽기 시작. 굽는 동안 다른 일(다음 재료 집기, 다른 화덕)을 해도 돼요.
 4. **띵!** 하면 화덕 옆에서 눌러 접시를 들고 → **손님 앞**으로 가서 손님을 누르면 배달. 주문한 음식이고, 수가 답과 같으면 성공!
-- 벌은 없어요: 다른 음식이면 "꼬치 주세요!", 수가 다르면 "N개는 아니에요!" 하고 접시는 그대로 — 다른 손님에게 주거나 **버리기** 통에 버리고 다시. 손님은 아무리 기다려도 떠나지 않아요(빨리 주면 코인 +1).
+- 벌은 없어요: 다른 음식이면 "꼬치 주세요!", 수가 다르면 "N개는 아니에요!" 하고 접시는 그대로 — 다른 손님에게 주거나 **버리기** 통에 버리고 다시. 손님은 아무리 기다려도 떠나지 않아요(빨리 주면 코인 +1). 대신 오래 기다리면 머리를 긁적이다가 꾸벅꾸벅 졸아요(zzz) — 손님을 누르면 "깜짝!" 깨서 주문을 다시 말해 줘요.
 - 기다리는 손님끼리는 답이 겹치지 않게 뽑아요. 답이 1~20 이 되도록 한 자리 난이도만 씁니다.
 
 ### 연산을 재미있게 만드는 장치
@@ -185,7 +185,7 @@ src/
   shop.js             냥냥 상점: 물건 목록 · 사기/쓰기 · 모자/벽지/장식 그리기
   home.js             첫 화면: 미션 · 상점 · 부모님 보기 · 카드 캐릭터 모자
   sprites.js          SPRITES: 스프라이트 시트 메타 + 로더 + 프레임 그리기 + HEADS(모자 자리)
-  characters.js       CHARACTERS: 캐릭터 정의, 손님 6종(호랑이·토끼·곰·시바·병아리·다람쥐)
+  characters.js       CHARACTERS: 캐릭터 정의, 손님 8종(호랑이·토끼·곰·시바·병아리·다람쥐·판다·거북이)과 동작(idle·happy·love·yay·sad·think·sleep…)
   actor.js            Actor: moveTo(x)→Promise, hop(), carry(), say(), 모자, 공통 렌더
   audio.js            WebAudio 효과음, 음성 안내
   problems.js         모드×레벨×난이도별 문제·보기 생성 (buildProblem: 다시 낼 문제 만들기)
@@ -199,7 +199,7 @@ src/
                       단체·대왕 손님, 거스름돈, 척척·콤보·피버, 1인/2인)
   kitchen/draw.js     냥냥 주방 그리기 (홀·계산대·음식 3종·재료 상자·화덕 도구·쟁반·그림 주문·조이스틱)
 assets/
-  raw/*_sheet.png     원본 시트 (6×6 칸, 흰 배경) — 고양이·호랑이·토끼·곰·시바·병아리·다람쥐·펭귄
+  raw/*_sheet.png     원본 시트 (6×6 칸, 흰 배경) — 고양이·호랑이·토끼·곰·시바·병아리·다람쥐·판다·거북이·펭귄
   sprites/*.png       sprite_pack.py 로 배경을 지우고 다시 포장한 시트 (+ 같은 이름 .json 메타)
 tools/
   sprite_pack.py      스프라이트 시트 자동 정리 도구
@@ -211,8 +211,22 @@ tools/
 - **SPRITES** — 시트 메타 `{ src, frameW, frameH, anims: { 이름: { row, frames, fps } } }`.
 - **HEADS** (`src/sprites.js`) — 고양이·펭귄 시트의 프레임마다 머리 꼭대기 좌표. 상점 모자를 여기에 씌워요. 시트를 바꾸면 이 값도 맞춰 주세요(프레임 아래 가운데가 (0,0)).
 - **CHARACTERS** — `kind: 'sprite'` 는 SPRITES 시트를 쓰고, `anims[이름] = { anim, seq?, fps?, scale? }` 로 프레임 순서를 재정의할 수 있습니다. (`kind: 'shape'` 로 `draw(ctx, pose)` 를 주면 Canvas 코드로 그린 캐릭터도 쓸 수 있어요.)
-- **Actor** — 게임 로직은 `idle` / `walk`(있으면 `happy`, `sad`)만 호출하므로 캐릭터를 바꿔도 게임 코드는 그대로입니다. 없는 애니 이름은 `idle` 로 대체됩니다.
-- 고양이 냥이 = 직원(스프라이트). 손님은 모두 스프라이트 동물: 호랑이 호돌이·토끼 토순이·곰돌이·시바·병아리 삐약이·다람쥐 다람이(`FEATURED_CUSTOMERS`) 중에서 한 판에 겹치지 않게 나와요.
+- **Actor** — 게임 로직은 동작 이름(`idle` / `walk` / `happy` / `sad` …)만 호출하므로 캐릭터를 바꿔도 게임 코드는 그대로입니다. 없는 애니 이름은 `idle` 로 대체됩니다.
+- 고양이 냥이 = 직원(스프라이트). 손님은 모두 스프라이트 동물 8마리(`FEATURED_CUSTOMERS`) 중에서 한 판에 겹치지 않게 나와요. 저마다 좋아하는 간식을 들고 와요:
+  호랑이 호돌이(물고기) · 토끼 토순이(당근) · 곰돌이(사과) · 시바(뼈다귀) · 병아리 삐약이(오리 인형) · 다람쥐 다람이(도토리) · 판다 판돌이(대나무) · 거북이 엉금이(미역)
+- **손님 동작** (`src/characters.js`) — 게임은 동작 이름만 부르고, 없는 동작은 `idle` 로 그려요.
+
+  | 동작 | 언제 | 그림 |
+  |---|---|---|
+  | `idle` | 주문하고 기다릴 때 | 간식을 꼭 들고 가끔 웃고 깜빡 |
+  | `walk` | 들어오고 나갈 때 | 걷기 |
+  | `happy` | 정답 · 음식 받았을 때 | 만세 · 하트 손 |
+  | `love` | 한 번에 맞힘(사탕 가게) · 척척 🎯 · 다시 도전 성공 · 대왕 손님 배부름(주방) | 하트 뿅뿅 |
+  | `yay` | 사탕 봉지를 받을 때 · 주방에서 다 먹고 나가기 직전 | 간식 들고 반짝 ✨ |
+  | `eat` | 뺄셈에서 사탕 받아먹기 | 냠냠 |
+  | `sad` | 다른 음식 · 다른 개수를 받았을 때 | 갸우뚱 걱정 |
+  | `think` | 사탕 가게에서 틀렸을 때("같이 세어 볼까?") · 주방에서 오래 기다릴 때 | 머리 긁적 · 물음표 |
+  | `sleep` | 주방에서 아주 오래 기다릴 때 (눌러 주면 깜짝 깨요) | 꾸벅꾸벅 zzz |
 
 ## 🐾 새 캐릭터 스프라이트로 교체하기
 
@@ -220,7 +234,9 @@ tools/
 
 - 한 행 = 한 애니메이션, 프레임은 왼쪽→오른쪽.
 - **투명 배경**이면 그대로, **흰 배경**이면 `--bg white` 를 붙이면 됩니다(가장자리에서 이어진 흰 배경과 옅은 그림자만 지우고, 캐릭터 안쪽의 흰 털은 남김).
-- 칸이 **일정한 격자**(예: 6×6)면 `--grid 6x6` 을 붙이세요. 하트·물방울·느낌표 같은 효과가 캐릭터 옆에 떨어져 있어도 한 프레임으로 잘리고, 그림 위치를 그대로 유지해 움직일 때 흔들리지 않습니다. 이웃 칸 그림이 경계를 넘어 들어온 작은 조각은 자동으로 지웁니다.
+- 칸이 **일정한 격자**(예: 6×6)면 `--grid 6x6` 을 붙이세요. 하트·물방울·느낌표 같은 효과가 캐릭터 옆에 떨어져 있어도 한 프레임으로 잘리고, 그림 위치를 그대로 유지해 움직일 때 흔들리지 않습니다. 이웃 칸 그림이 경계를 넘어 들어온 조각(작은 덩어리, 칸 테두리에 걸친 얇은 '︶' 윤곽선)은 자동으로 지웁니다.
+- AI 로 만든 격자는 아래 줄로 갈수록 그림이 칸 안에서 조금씩 떠 있곤 해요. `--baseline` 을 붙이면 줄마다 발끝을 맞춰서 어느 동작이든 같은 바닥에 서 있어요.
+- `--quantize` 를 붙이면 256색 PNG 로 줄여 용량이 약 1/3 이 됩니다(눈으로는 거의 같음). `pip install imagequant` 가 있으면 더 깔끔하게 줄여요. 이미 만든 시트는 `--shrink` 로 그 자리에서 줄일 수 있어요.
 - 격자가 아니고 프레임 크기나 간격이 들쭉날쭉해도 괜찮습니다. `--grid` 없이 쓰면 도구가 알아서 찾아 정렬합니다.
 - 캐릭터가 **오른쪽을 보는** 그림이면 가장 편합니다(왼쪽이면 2단계의 `faces` 를 `'left'` 로).
 - `assets/raw/` 에 넣습니다. 예: `assets/raw/dog_sheet.png`
@@ -261,20 +277,27 @@ python tools/sprite_pack.py assets/raw/dog_sheet.png -o assets/sprites/dog \
 - 모든 프레임을 같은 크기 셀에 **하단 중앙 정렬**(발끝이 셀 바닥에 닿게)로 다시 배치하므로 걷는 동안 캐릭터가 떨리지 않습니다.
 - 결과: `assets/sprites/dog.png` + `assets/sprites/dog.json`
 
-지금 고양이·호랑이는 이렇게 만들었습니다 (흰 배경 6×6 시트):
+지금 시트들은 이렇게 만들었습니다 (흰 배경 6×6 시트):
 
 ```bash
+pip install pillow imagequant
+# 고양이 (모자 기준점 HEADS 가 이 배치에 맞춰져 있어서 --baseline 없이), 그 뒤 용량만 줄이기
 python tools/sprite_pack.py assets/raw/cat_sheet.png -o assets/sprites/cat --bg white --grid 6x6 \
     --anim walk=0 --anim groom=1 --anim happy=2 --anim surprise=3 --fps walk=10 --scale 0.85
-python tools/sprite_pack.py assets/raw/tiger_sheet.png -o assets/sprites/tiger --bg white --grid 6x6 \
-    --anim walk=0 --anim giggle=1 --anim happy=2 --fps walk=10 --scale 0.85
-# 토끼·곰·시바·병아리·다람쥐 (0행 걷기, 1행 앉기, 2행 신남)
-for n in rabbit bear shiba chick chipmunk; do
-  python tools/sprite_pack.py assets/raw/${n}_sheet.png -o assets/sprites/$n --bg white --bg-tol 62 --grid 6x6 \
-      --anim walk=0 --anim sit=1 --anim fun=2 --fps walk=10 --scale 0.95
+python tools/sprite_pack.py assets/sprites/cat.png --shrink
+# 손님: 0 걷기 · 1 앉은 표정 · 2 걱정·긁적·하트·만세 · 3 놀람·뾰로통 · 4 간식 줍기·먹기·졸기 · 5 간식 들고 있기(마지막 칸 반짝)
+for n in rabbit bear shiba chick chipmunk panda; do
+  python tools/sprite_pack.py assets/raw/${n}_sheet.png -o assets/sprites/$n --bg white --bg-tol 62 --grid 6x6 --baseline \
+      --anim walk=0 --anim sit=1 --anim fun=2 --anim feel=3 --anim item=4 --anim hold=5 --fps walk=10 --scale 0.95 --quantize
 done
-# 펭귄 (행 이름 없이 row0~row5 로 전부)
+# 거북이는 줄 순서가 달라요 (1줄은 안 씀, 2 미역 들고 앉기, 3 표정, 4 감정, 5 서기·먹기·안기·졸기·뒷모습·반짝)
+python tools/sprite_pack.py assets/raw/turtle_sheet.png -o assets/sprites/turtle --bg white --bg-tol 62 --grid 6x6 --baseline \
+    --anim walk=0 --anim sit=2 --anim fun=3 --anim feel=4 --anim item=5 --fps walk=10 --scale 0.95 --quantize
+python tools/sprite_pack.py assets/raw/tiger_sheet.png -o assets/sprites/tiger --bg white --grid 6x6 --baseline \
+    --anim walk=0 --anim giggle=1 --anim happy=2 --anim feel=3 --anim item=4 --anim hold=5 --fps walk=10 --fps happy=5 --scale 0.85 --quantize
+# 펭귄 (행 이름 없이 row0~row5 로 전부, HEADS 때문에 --baseline 없이), 그 뒤 용량만 줄이기
 python tools/sprite_pack.py assets/raw/penguin_sheet.png -o assets/sprites/penguin --bg white --bg-tol 62 --grid 6x6 --all --scale 0.95
+python tools/sprite_pack.py assets/sprites/penguin.png --shrink
 ```
 
 그림을 바꾼 뒤에는 `src/sprites.js` 의 `SPRITE_VERSION` 을 1 올려 주세요(폰에 예전 그림이 캐시로 남지 않게).
@@ -333,7 +356,7 @@ this.cat = new Actor('dogStaff', CAT_HOME, FLOOR, { facing: 'right', speed: 300 
 
 - 스프라이트 동물은 `spriteCustomer(...)` 로 정의하고 `FEATURED_CUSTOMERS` 에 키를 추가 → 세 게임 모두 손님으로 나옵니다(한 판에 겹치지 않게).
 
-손님 애니메이션 이름은 `idle`(앉아 있기), `walk`, `happy`(정답), `eat`(뺄셈에서 사탕 받아먹기)를 씁니다. 손님은 등장할 때 왼쪽을 보며 걸어 들어오고, `faces` 값에 따라 자동으로 좌우 반전됩니다. `scale` 은 다른 손님들(키 약 150~165px)과 비슷해지게 맞추세요(호랑이 1.08, 토끼 1.12, 곰·시바 1.25 …).
+손님 동작 이름은 위 [구조 요약](#구조-요약)의 표(`idle` · `walk` · `happy` · `love` · `yay` · `eat` · `sad` · `think` · `sleep`)를 따르세요. 표준 6줄 시트면 `spriteCustomer(이름, 시트, 배율, 좋아하는 간식, { 다른 것만 })` 로 기본 동작이 채워져요. 손님은 등장할 때 왼쪽을 보며 걸어 들어오고, `faces` 값에 따라 자동으로 좌우 반전됩니다. `scale` 은 다른 손님들(기다리는 키 약 140~150px)과 비슷해지게 맞추세요(호랑이 1.08, 토끼 1.12, 곰·시바 1.25, 판다 1.28, 거북이 1.3 …). 냥냥 주방도 같은 `scale` 로 그려요.
 
 ## 만들 때 지킨 원칙
 
