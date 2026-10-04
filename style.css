@@ -379,3 +379,20 @@ a.chip { text-decoration: none; color: var(--ink); }
 #stage.portrait #hud > :not(#btn-games):not(#btn-home) { order: 1; }
 #stage.portrait #btn-sound { margin-left: auto; }
 #stage.portrait #coins { margin-left: 0; }
+
+/* 오늘의 미션 알림 (모든 게임 공용, missions.js 가 띄움) */
+#toasts {
+  position: fixed; left: 50%; top: max(10px, env(safe-area-inset-top)); transform: translateX(-50%);
+  z-index: 50; display: flex; flex-direction: column; align-items: center; gap: 8px;
+  pointer-events: none; width: max-content; max-width: 94vw;
+}
+.toast {
+  background: #fff; border: 4px solid var(--ink); border-radius: 18px; box-shadow: 0 5px 0 var(--ink);
+  padding: 8px 18px; font-family: var(--font); font-size: 20px; color: var(--ink); text-align: center;
+  animation: popin .35s cubic-bezier(.3, 1.6, .5, 1);
+  transition: opacity .5s, transform .5s;
+}
+.toast.out { opacity: 0; transform: translateY(-12px); }
+
+/* 결과 화면: 다음 단계 권하기 */
+.go.next-step { display: block; margin: 0 auto 18px; background: var(--lemon); font-size: 28px; padding: 10px 26px; }

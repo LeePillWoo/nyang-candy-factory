@@ -15,11 +15,13 @@
       --pink: #ff8fab;
       --sky: #7cc8f8;
       --lemon: #ffd65c;
+      --mint: #7fdcae;
       --cream: #fff8ef;
       --font: 'Jua', 'Apple SD Gothic Neo', 'Malgun Gothic', 'Noto Sans KR', sans-serif;
     }
     * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    [hidden] { display: none !important; }
     body {
       margin: 0;
       min-height: 100vh;
@@ -36,15 +38,21 @@
       user-select: none;
       -webkit-user-select: none;
     }
-    header { width: min(1180px, 100%); display: flex; align-items: center; justify-content: flex-end; }
-    .coins {
+    body.modal-open { overflow: hidden; }
+    button { font-family: var(--font); color: var(--ink); cursor: pointer; }
+    header { width: min(1180px, 100%); display: flex; align-items: center; gap: 10px; }
+    .hbtn, .coins {
       display: inline-flex; align-items: center; gap: 8px;
       background: #fff; border: 4px solid var(--ink); border-radius: 20px;
       box-shadow: 0 5px 0 var(--ink);
-      padding: 6px 16px 6px 10px; font-size: 26px;
+      padding: 6px 14px; font-size: 22px;
     }
+    .hbtn:active { transform: translateY(4px); box-shadow: 0 1px 0 var(--ink); }
+    .hbtn.shop { background: #ffe08a; }
+    .coins { margin-left: auto; padding: 6px 16px 6px 10px; font-size: 26px; }
     .coin { width: 28px; height: 28px; border-radius: 50%; border: 4px solid var(--ink);
       background: radial-gradient(circle at 35% 35%, #fff4b0 0 22%, #ffd23f 23% 100%); }
+    .coins.bump { animation: bump .45s; }
     h1 {
       margin: 10px 0 2px;
       font-size: clamp(40px, 9vw, 72px);
@@ -57,7 +65,30 @@
       text-wrap: balance;
     }
     h1 span { color: var(--lemon); }
-    .sub { font-size: clamp(20px, 4.5vw, 30px); margin: 10px 0 24px; text-align: center; }
+    .sub { font-size: clamp(20px, 4.5vw, 30px); margin: 8px 0 16px; text-align: center; }
+
+    /* 오늘의 미션 */
+    .missions {
+      width: min(1180px, 100%);
+      background: #fff; border: 5px solid var(--ink); border-radius: 28px; box-shadow: 0 8px 0 var(--ink);
+      padding: 12px 18px 14px; margin-bottom: 26px;
+    }
+    .missions h2 { margin: 0 0 8px; font-size: 26px; font-weight: normal; display: flex; align-items: center; gap: 10px; }
+    .missions h2 small { margin-left: auto; font-size: 20px; color: #8a6f66; }
+    .missions ul { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 10px; }
+    .missions li {
+      display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 4px 10px;
+      background: #fff8ef; border: 3px solid var(--ink); border-radius: 18px; padding: 8px 12px; font-size: 19px;
+    }
+    .missions li .ic { font-size: 28px; grid-row: span 2; }
+    .missions li .bar { grid-column: 2; height: 12px; border: 3px solid var(--ink); border-radius: 8px; background: #f3ece6; overflow: hidden; }
+    .missions li .bar i { display: block; height: 100%; background: var(--mint); }
+    .missions li .num { grid-row: span 2; font-size: 20px; }
+    .missions li.done { background: #e8fff1; }
+    .missions li.done .num { font-size: 28px; }
+    .missions .foot { margin: 8px 0 0; font-size: 18px; color: #8a6f66; text-align: center; }
+    .missions .foot b { color: #e0701a; font-weight: normal; }
+
     .cards {
       width: min(1180px, 100%);
       display: grid;
@@ -87,12 +118,27 @@
       overflow: hidden;
       position: relative;
     }
+    /* 캐릭터 (시트 한 칸을 CSS 로) + 위에 상점 모자를 그리는 캔버스 */
+    .char { position: relative; animation: bob 1.6s ease-in-out infinite; }
+    .char .hat-layer { position: absolute; left: -40px; top: -70px; width: calc(100% + 80px); height: calc(100% + 70px); pointer-events: none; }
     .cat {
       width: 149px; height: 163px;   /* 시트 165×181 칸(앉은 모습, 2행 0번)을 0.9배 */
       background: url(assets/sprites/cat.png?v=8) 0 -163px / 891px 652px no-repeat;
-      animation: bob 1.6s ease-in-out infinite;
     }
-    .candies { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
+    .peng {
+      width: 158px; height: 157px;   /* 펭귄 시트 166×165 칸(정면 만세, 2행 0번)을 0.95배 */
+      background: url(assets/sprites/penguin.png?v=8) 0 -157px / 946px 941px no-repeat;
+    }
+    .chef-cat {
+      width: 149px; height: 163px;   /* 고양이 시트 만세(3행 3번)를 0.9배 */
+      background: url(assets/sprites/cat.png?v=8) -445.5px -325.8px / 891px 652px no-repeat;
+    }
+    .card.penguin .char { animation-duration: 1s; }
+    .card.kitchen .char { animation-duration: 1.2s; }
+    .candies, .dumplings { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
+    .snow { position: absolute; inset: auto 0 10px; text-align: center; font-size: 26px; letter-spacing: 6px; }
+    .card.penguin .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 60%, #ffffff 60%); }
+    .card.kitchen .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 62%, #f3d9ad 62%); }
     .card h2 { margin: 16px 0 4px; font-size: clamp(32px, 7vw, 44px); font-weight: normal; text-align: center; }
     .card p { margin: 0; font-size: clamp(18px, 4vw, 24px); text-align: center; text-wrap: balance; word-break: keep-all; }
     .play {
@@ -101,35 +147,89 @@
       box-shadow: 0 6px 0 var(--ink);
       padding: 8px 36px; font-size: 30px;
     }
-    .peng {
-      width: 158px; height: 157px;   /* 펭귄 시트 166×165 칸(정면 만세, 2행 0번)을 0.95배 */
-      background: url(assets/sprites/penguin.png?v=8) 0 -157px / 946px 941px no-repeat;
-      animation: bob 1s ease-in-out infinite;
+
+    /* 창 (상점 · 부모님) */
+    .modal { position: fixed; inset: 0; z-index: 20; background: rgba(74, 52, 52, .45); display: grid; place-items: center; padding: 14px; }
+    .sheet {
+      position: relative; width: min(680px, 100%); max-height: calc(100dvh - 28px); overflow: auto;
+      background: var(--cream); border: 6px solid var(--ink); border-radius: 32px; box-shadow: 0 10px 0 var(--ink);
+      padding: 16px 18px 20px; animation: popin .35s cubic-bezier(.3, 1.6, .5, 1);
     }
-    .snow { position: absolute; inset: auto 0 10px; text-align: center; font-size: 26px; letter-spacing: 6px; }
-    .card.penguin .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 60%, #ffffff 60%); }
-    .chef-cat {
-      width: 149px; height: 163px;   /* 고양이 시트 만세(3행 3번)를 0.9배 */
-      background: url(assets/sprites/cat.png?v=8) -445.5px -325.8px / 891px 652px no-repeat;
-      animation: bob 1.2s ease-in-out infinite;
+    .sheet h2 { margin: 0 0 10px; font-size: 32px; font-weight: normal; text-align: center; }
+    .sheet h3 { margin: 16px 0 8px; font-size: 22px; font-weight: normal; }
+    .close {
+      position: absolute; top: 10px; right: 10px; width: 48px; height: 48px;
+      border: 4px solid var(--ink); border-radius: 50%; background: #fff; box-shadow: 0 4px 0 var(--ink); font-size: 24px;
     }
-    .dumplings { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
-    .card.kitchen .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 62%, #f3d9ad 62%); }
-    .new { position: absolute; top: 10px; right: 10px; background: #ff5c8a; color: #fff; border: 3px solid var(--ink); border-radius: 12px; padding: 2px 10px; font-size: 18px; }
+    .preview { display: flex; align-items: center; justify-content: center; gap: 16px; background: #fff; border: 4px solid var(--ink); border-radius: 22px; padding: 6px; }
+    .preview canvas { width: 300px; height: 150px; max-width: 70%; }
+    .wallet { font-size: 26px; margin: 0; white-space: nowrap; }
+    .tabs { display: flex; gap: 10px; justify-content: center; margin: 12px 0; }
+    .tabs button { border: 4px solid var(--ink); border-radius: 999px; background: #fff; padding: 6px 18px; font-size: 22px; opacity: .55; white-space: nowrap; }
+    .tabs button[aria-selected="true"] { background: var(--lemon); opacity: 1; }
+    .items { display: grid; grid-template-columns: repeat(auto-fill, minmax(124px, 1fr)); gap: 10px; }
+    .item {
+      background: #fff; border: 4px solid var(--ink); border-radius: 18px; padding: 6px 6px 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 2px; font-size: 18px;
+    }
+    .item canvas { width: 96px; height: 72px; }
+    .item .price { font-size: 17px; color: #8a6f66; }
+    .item.sel { box-shadow: 0 0 0 5px var(--lemon); }
+    .item.on { background: #e8fff1; }
+    .buybar { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 14px; }
+    .buybar .msg { margin: 0; font-size: 22px; text-align: center; min-height: 28px; }
+    .buybar .msg b { color: #e0701a; font-weight: normal; font-size: 28px; }
+    .act {
+      border: 5px solid var(--ink); border-radius: 999px; box-shadow: 0 6px 0 var(--ink);
+      background: var(--pink); padding: 10px 30px; font-size: 26px;
+    }
+    .act:disabled { background: #eee6e0; color: #9c8b82; box-shadow: 0 6px 0 #9c8b82; border-color: #9c8b82; }
+    .act:not(:disabled):active { transform: translateY(5px); box-shadow: 0 1px 0 var(--ink); }
+
+    /* 부모님 보기 */
+    .acc { display: grid; gap: 6px; }
+    .acc .row { display: grid; grid-template-columns: 90px 1fr 120px; align-items: center; gap: 10px; font-size: 19px; }
+    .acc .bar { height: 16px; border: 3px solid var(--ink); border-radius: 9px; background: #f3ece6; overflow: hidden; }
+    .acc .bar i { display: block; height: 100%; background: var(--sky); }
+    .missed { margin: 0; padding-left: 26px; font-size: 20px; line-height: 1.55; }
+    .missed small { color: #8a6f66; font-size: 16px; }
+    .note { font-size: 17px; color: #8a6f66; }
+    .danger { border: 4px solid var(--ink); border-radius: 999px; background: #fff; padding: 6px 18px; font-size: 18px; }
+
     @keyframes bob { 50% { transform: translateY(-8px); } }
-    @media (prefers-reduced-motion: reduce) { .cat, .peng, .chef-cat { animation: none; } }
+    @keyframes popin { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    @keyframes bump { 40% { transform: scale(1.18); } }
+    @media (prefers-reduced-motion: reduce) { .char { animation: none; } }
+    @media (max-width: 520px) {
+      .hbtn { font-size: 18px; padding: 5px 10px; }
+      .tabs button { font-size: 18px; padding: 5px 12px; }
+      .sheet { padding: 14px 12px 18px; }
+      .coins { font-size: 22px; }
+      .acc .row { grid-template-columns: 70px 1fr 96px; font-size: 17px; }
+    }
   </style>
 </head>
 <body>
   <header>
-    <div class="coins" aria-label="모은 코인"><span class="coin"></span><b id="coin-count">0</b></div>
+    <button class="hbtn shop" id="open-shop">🛍️ 상점</button>
+    <button class="hbtn" id="open-parent">👪 부모님</button>
+    <div class="coins" id="coins" aria-label="모은 코인"><span class="coin"></span><b id="coin-count">0</b></div>
   </header>
   <h1><span>냥냥</span> 수학 놀이터</h1>
   <p class="sub">어떤 게임을 할까?</p>
 
+  <section class="missions" aria-label="오늘의 미션">
+    <h2>🎯 오늘의 미션 <small id="stamps"></small></h2>
+    <ul id="mission-list"></ul>
+    <p class="foot" id="mission-foot"></p>
+  </section>
+
   <main class="cards">
     <a class="card candy" href="candy.html">
-      <div class="art"><div class="cat" role="img" aria-label="고양이 냥이"></div><div class="candies">🍬🍭🍬</div></div>
+      <div class="art">
+        <div class="char" data-sheet="cat" data-anim="groom" data-frame="0" data-scale="0.9"><div class="cat" role="img" aria-label="고양이 냥이"></div><canvas class="hat-layer"></canvas></div>
+        <div class="candies">🍬🍭🍬</div>
+      </div>
       <h2>냥냥 사탕 공장</h2>
       <p>사탕을 담아서 손님에게 배달해요</p>
       <span class="play">시작!</span>
@@ -137,7 +237,7 @@
 
     <a class="card penguin" href="penguin.html">
       <div class="art">
-        <div class="peng" role="img" aria-label="만세하는 펭귄"></div>
+        <div class="char" data-sheet="penguin" data-anim="row1" data-frame="0" data-scale="0.95"><div class="peng" role="img" aria-label="만세하는 펭귄"></div><canvas class="hat-layer"></canvas></div>
         <div class="snow">🐟 ❄️ 🐟</div>
       </div>
       <h2>펭귄 남극탐험</h2>
@@ -147,9 +247,8 @@
 
     <a class="card kitchen" href="kitchen.html">
       <div class="art">
-        <div class="chef-cat" role="img" aria-label="신난 고양이 요리사"></div>
+        <div class="char" data-sheet="cat" data-anim="happy" data-frame="3" data-scale="0.9"><div class="chef-cat" role="img" aria-label="신난 고양이 요리사"></div><canvas class="hat-layer"></canvas></div>
         <div class="dumplings">🥟 🍡 🍪</div>
-        <span class="new">NEW · 2인</span>
       </div>
       <h2>냥냥 주방</h2>
       <p>만두·꼬치·쿠키를 굽고 배달해요 (1인 · 2인)</p>
@@ -157,8 +256,54 @@
     </a>
   </main>
 
-  <script>
-    try { document.getElementById('coin-count').textContent = JSON.parse(localStorage.getItem('nyang.coins')) || 0; } catch (e) { /* 저장소 없음 */ }
+  <!-- 상점 -->
+  <div class="modal" id="shop" hidden>
+    <div class="sheet" role="dialog" aria-label="냥냥 상점">
+      <button class="close" aria-label="닫기">✕</button>
+      <h2>🛍️ 냥냥 상점</h2>
+      <div class="preview"><canvas id="preview" width="600" height="300"></canvas><p class="wallet">🪙 <b id="shop-coins">0</b></p></div>
+      <div class="tabs" role="tablist">
+        <button data-tab="hat" aria-selected="true">👒 모자</button>
+        <button data-tab="room" aria-selected="false">🏠 주방 꾸미기</button>
+      </div>
+      <div class="items" id="shop-items"></div>
+      <div class="buybar">
+        <p class="msg" id="shop-msg">갖고 싶은 걸 눌러 봐요!</p>
+        <button class="act" id="shop-action" hidden></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 부모님 보기 -->
+  <div class="modal" id="parent" hidden>
+    <div class="sheet" role="dialog" aria-label="부모님 보기">
+      <button class="close" aria-label="닫기">✕</button>
+      <h2>👪 부모님 보기</h2>
+      <h3>최근 정답률 <span class="note">(종류별 최근 30문제, 세 게임 합쳐서)</span></h3>
+      <div class="acc" id="acc"></div>
+      <h3>자주 틀린 문제</h3>
+      <ol class="missed" id="missed"></ol>
+      <p class="note" id="review-note"></p>
+      <h3>오늘의 미션</h3>
+      <p class="note" id="mission-note"></p>
+      <p class="note">기록은 이 기기(브라우저)에만 저장돼요. 인터넷 기록을 지우거나 다른 브라우저로 열면 따로 시작해요.</p>
+      <button class="danger" id="reset-learn">배움 기록 지우기 (코인·아이템은 그대로)</button>
+    </div>
+  </div>
+
+  <!-- 배포할 때 v 값을 올리면 모든 파일이 한꺼번에 새로 받아진다 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./src/audio.js": "./src/audio.js?v=20",
+      "./src/sprites.js": "./src/sprites.js?v=20",
+      "./src/save.js": "./src/save.js?v=20",
+      "./src/learn.js": "./src/learn.js?v=20",
+      "./src/missions.js": "./src/missions.js?v=20",
+      "./src/shop.js": "./src/shop.js?v=20"
+    }
+  }
   </script>
+  <script type="module" src="src/home.js?v=20"></script>
 </body>
 </html>

@@ -19,6 +19,7 @@ ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 IMPORT_RE = re.compile(r"^import\s+(\{[^}]*\}|\*\s+as\s+\w+)\s+from\s+'(\.{1,2}/[^']+\.js)';\s*$", re.M)
 EXPORT_RE = re.compile(r"^export\s+(?:const|let|function|class)\s+(\w+)", re.M)
+AS_RE = re.compile(r"(\w+)\s+as\s+(\w+)")
 
 
 def read(path):
@@ -61,7 +62,9 @@ def bundle_js(entry):
             what = m.group(1)
             if what.startswith('*'):
                 return f"const {what.split()[-1]} = {target};"
-            return f"const {what} = {target};"
+            # import { a as b } → const { a: b } = …
+            names = AS_RE.sub(r'\1: \2', what)
+            return f"const {names} = {target};"
 
         src = IMPORT_RE.sub(repl, src)
         src = re.sub(r"^export\s+", "", src, flags=re.M)
@@ -113,6 +116,9 @@ def main():
             body = f'<script>document.body.classList.add({json.dumps(cls.group(1))});</script>\n' + body
 
     sprites = f"<script>window.NYANG_INLINE_SPRITES = {json.dumps(sprite_data())};</script>\n" if 'NYANG_INLINE_SPRITES' in js else ''
+    # 페이지 CSS 안의 스프라이트 그림(첫 화면 카드)도 data URI 로
+    data = sprite_data()
+    head = re.sub(r"url\(assets/sprites/([\w-]+\.png)[^)]*\)", lambda m: f"url({data[m.group(1)]})" if m.group(1) in data else m.group(0), head)
     script = f"{sprites}<script type=\"module\">\n{js}</script>"
     style = f"<style>\n{''.join(css)}</style>"
     if args.fragment:

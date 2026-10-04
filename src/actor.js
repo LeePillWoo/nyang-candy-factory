@@ -1,7 +1,8 @@
 // Actor: 화면 위의 캐릭터 하나. 스프라이트/코드드로잉 캐릭터를 같은 방식으로 다룬다.
 // 게임 로직은 idle() / walk() / moveTo() / hop() / carry() 만 알면 된다.
 import { CHARACTERS, OUTLINE } from './characters.js';
-import { SPRITES, drawSpriteFrame } from './sprites.js';
+import { SPRITES, drawSpriteFrame, headOf } from './sprites.js';
+import { drawHat } from './shop.js';
 
 export class Actor {
   constructor(charKey, x, y, opts = {}) {
@@ -14,6 +15,7 @@ export class Actor {
     this.speed = opts.speed || 260;
     this.visible = true;
     this.carried = null;   // (ctx) => void, 원점 = 들고 있는 위치
+    this.hat = null;       // 상점에서 산 모자 id (머리 위에 그림)
     this.bubble = null;    // { text, until }
     this.time = 0;
     this._move = null;
@@ -103,7 +105,7 @@ export class Actor {
       const fps = a.fps || meta.fps || 8;
       const seq = a.seq || null;
       const n = seq ? seq.length : meta.frames;
-      const i = Math.floor(this.animTime * fps) % n;
+      const i = ((Math.floor(this.animTime * fps) % n) + n) % n;
       const frame = seq ? seq[i] : i;
       // 그림자
       ctx.save();
@@ -114,7 +116,12 @@ export class Actor {
       ctx.fill();
       ctx.restore();
       const flip = c.faces !== 'front' && this.facing !== c.faces;
-      drawSpriteFrame(ctx, sheet, a.anim, frame, c.scale * (a.scale || 1), flip);
+      const sc = c.scale * (a.scale || 1);
+      drawSpriteFrame(ctx, sheet, a.anim, frame, sc, flip);
+      if (this.hat) {
+        const head = headOf(c.sprite, a.anim, frame, sc, flip);
+        if (head) drawHat(ctx, this.hat, head.x, head.y, head.size, this.time, flip);
+      }
     } else {
       ctx.save();
       if (this.facing === 'right') ctx.scale(-1, 1); // 꼬리가 진행 방향 뒤로

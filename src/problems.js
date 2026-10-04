@@ -20,18 +20,6 @@ export const MODES = {
   ten: { sign: '+', label: '10 만들기' },
 };
 
-export const LEVELS = {
-  picture: { label: '그림으로 세기' },
-  number:  { label: '숫자로 풀기' },
-};
-
-export const DIFFS = {
-  1: { label: '한 자리' },
-  2: { label: '두 자리 · 한 자리' },
-  3: { label: '두 자리 · 두 자리' },
-  4: { label: '세 자리 · 세 자리' },
-};
-
 const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
 
 // 1단계(한 자리): 그림 레벨은 사탕을 셀 수 있는 크기로
@@ -216,6 +204,13 @@ function exprParts(mode, a, b) {
   return [`${a} ${MODES[mode].sign} ${b} = `, ''];
 }
 
+// a, b 로 문제 하나 만들기 (틀린 문제를 다시 낼 때도 씀)
+export function buildProblem(mode, level, diff, a, b) {
+  const answer = solve(mode, a, b);
+  const [left, right] = exprParts(mode, a, b);
+  return { mode, level, diff, a, b, answer, left, right, choices: makeChoices(mode, a, b, answer, diff) };
+}
+
 // count 개의 서로 다른 문제
 export function makeProblemSet(mode, level, count = 5, diff = 1) {
   if (mode === 'ten') diff = 1;   // 10 만들기는 한 가지 난이도
@@ -228,12 +223,7 @@ export function makeProblemSet(mode, level, count = 5, diff = 1) {
     const key = `${a},${b}`;
     if (seen.has(key) && guard < 200) continue;
     seen.add(key);
-    const answer = solve(mode, a, b);
-    const [left, right] = exprParts(mode, a, b);
-    out.push({
-      mode, level: pic || diff === 1 ? level : 'number', diff, a, b, answer, left, right,
-      choices: makeChoices(mode, a, b, answer, diff),
-    });
+    out.push(buildProblem(mode, pic || diff === 1 ? level : 'number', diff, a, b));
   }
   return out;
 }

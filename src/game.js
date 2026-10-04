@@ -1,9 +1,13 @@
 // 냥냥 사탕 공장 — 게임 흐름, 장면 그리기, 입력 처리
 import { loadSprites } from './sprites.js';
 import { Actor, wait } from './actor.js';
-import { CHARACTERS, CUSTOMER_KEYS, FEATURED_CUSTOMERS, OUTLINE } from './characters.js';
+import { CHARACTERS, FEATURED_CUSTOMERS, OUTLINE } from './characters.js';
 import { sfx, speak, unlockAudio, isMuted, setMuted } from './audio.js';
-import { makeProblemSet, orderText, questionText } from './problems.js';
+import { makeProblemSet, buildProblem, orderText, questionText } from './problems.js';
+import { load, save, getCoins, addCoins as addToWallet } from './save.js';
+import { beginSession, record, dueReviews, suggestStep } from './learn.js';
+import { track } from './missions.js';
+import { equippedHat } from './shop.js';
 import { solutionSteps } from './work.js';
 import { Blocks } from './blocks.js';
 import { safeInsets, visibleArea, onViewportChange } from './viewport.js';
@@ -56,6 +60,7 @@ const CANDY = {
 const BAG = { pink: '#ffc9d6', purple: '#dccbff', kraft: '#f1d3a6', mint: '#c6f0dc', sky: '#c9e8ff', lemon: '#fff0b3' };
 const BAG_CYCLE = [BAG.kraft, BAG.mint, BAG.sky, BAG.pink, BAG.lemon];
 const OP_WORD = { add: '더하기', sub: '빼기', mul: '곱하기', div: '나누기', ten: '더하기' };
+const DIFF_NAME = { 1: '한 자리', 2: '두 자리·한 자리', 3: '두 자리·두 자리', 4: '세 자리·세 자리' };
 
 const ABORT = Symbol('abort');
 
@@ -79,11 +84,8 @@ const easeOutBack = (x) => 1 + 2.70158 * Math.pow(x - 1, 3) + 1.70158 * Math.pow
 // 톡 튀어나오는 크기 (0 → 1.1 → 1)
 const popScale = (age) => age <= 0 ? 0 : age >= 0.35 ? 1 : easeOutBack(age / 0.35);
 
-// ── 저장 ────────────────────────────────────────────────
-const store = {
-  load(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
-  save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* 저장 불가 환경 */ } },
-};
+// ── 저장 (기기 저장소, save.js) ─────────────────────────────
+const store = { load, save };
 
 class Game {
   constructor() {
@@ -92,7 +94,7 @@ class Game {
     this.stage = $('#stage');
     this.time = 0;
     this.token = 0;
-    this.coins = store.load('nyang.coins', 0);
+    this.coins = getCoins();
     this.level = store.load('nyang.level', 'picture');
     this.diff = store.load('nyang.diff', 1);
 
@@ -107,6 +109,7 @@ class Game {
     }
     this.fit();
     this.cat = new Actor('nyang', CAT_HOME, FLOOR, { facing: 'right', speed: 300 });
+    this.cat.hat = equippedHat();
 
     this.bindUI();
     onViewportChange(() => this.fit());
@@ -115,7 +118,7 @@ class Game {
 
     let last = performance.now();
     const loop = (now) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));   // 첫 프레임은 시간이 살짝 거꾸로일 수 있다
       last = now;
       this.update(dt);
       this.draw();
@@ -258,6 +261,13 @@ class Game {
 
     $('#result .again').addEventListener('click', () => { sfx.tap(); this.run(this.mode, this.level); });
     $('#result .home').addEventListener('click', () => { sfx.tap(); this.showMenu(); });
+    $('#result .next-step').addEventListener('click', (e) => {
+      sfx.tap();
+      this.diff = Number(e.currentTarget.dataset.diff);
+      store.save('nyang.diff', this.diff);
+      this.renderLevel();
+      this.run(this.mode, this.level);
+    });
   }
 
   renderLevel() {
@@ -269,9 +279,13 @@ class Game {
 
   renderCoins() { $('#coin-count').textContent = this.coins; }
 
+  // 오늘의 미션에 알리기 (끝난 미션이 있으면 보상 코인이 지갑에 들어온다)
+  mission(event, n = 1) {
+    if (track(event, n)) { this.coins = getCoins(); this.renderCoins(); }
+  }
+
   addCoins(n, x, y) {
-    this.coins += n;
-    store.save('nyang.coins', this.coins);
+    this.coins = addToWallet(n);
     this.renderCoins();
     const el = document.createElement('div');
     el.className = 'float-coin';
@@ -307,7 +321,7 @@ class Game {
 
   showOrder(p) {
     const o = $('#order');
-    o.querySelector('.order-text').textContent = orderText(p);
+    o.querySelector('.order-text').textContent = (p.review ? '🔁 다시 도전! ' : '') + orderText(p);
     const ex = o.querySelector('.order-expr');
     ex.innerHTML = `${p.left}<span class="q">?</span>${p.right}`;
     const len = (p.left + p.right).length + String(p.answer).length;
@@ -363,12 +377,23 @@ class Game {
     this.mode = mode;
     this.level = level;
     this.problems = makeProblemSet(mode, level, ROUNDS, this.diff);
+    // 전에 틀린 문제가 다시 나올 때가 됐으면 하나 섞는다 ('다시 도전!')
+    beginSession();
+    const due = dueReviews({ mode, diff: this.problems[0].diff, level: this.problems[0].level }, 1)[0];
+    if (due) {
+      const rp = buildProblem(due.mode, due.level, due.diff, due.a, due.b);
+      rp.review = true;
+      const same = this.problems.findIndex((q) => q.a === rp.a && q.b === rp.b);
+      this.problems[same >= 0 ? same : 1 + Math.floor(Math.random() * (ROUNDS - 1))] = rp;
+    }
+    this.oks = [];
     this.results = [];
     this.earned = 0;
     this.round = 0;
-    // 스프라이트 손님은 꼭 한 번씩, 나머지 자리는 코드로 그린 손님 중 무작위
-    const featured = shuffle([...FEATURED_CUSTOMERS]).slice(0, ROUNDS);
-    this.lineup = shuffle([...featured, ...shuffle([...CUSTOMER_KEYS]).slice(0, ROUNDS - featured.length)]);
+    // 손님은 스프라이트 동물 중에서 겹치지 않게 (모자라면 다시 섞어서)
+    this.lineup = [];
+    while (this.lineup.length < ROUNDS) this.lineup.push(...shuffle([...FEATURED_CUSTOMERS]));
+    this.lineup.length = ROUNDS;
     this.resetScene();
     this.customer = null;
     $('#menu').hidden = true;
@@ -724,12 +749,17 @@ class Game {
     // 어려운 단계일수록 코인을 더 준다
     const reward = (this.firstTry ? 3 : 1) + (p.diff - 1);
     this.earned += reward;
+    record(p, this.firstTry);
+    this.oks.push(this.firstTry);
+    this.mission('candy.correct');
+    if (this.firstTry) this.mission('candy.first');
     this.results[this.round] = this.firstTry ? 'star' : 'ok';
     this.renderDots();
     const r = right.getBoundingClientRect();
     const sr = this.stage.getBoundingClientRect();
     this.addCoins(reward, (r.left - sr.left) / this.scale + 60, (r.top - sr.top) / this.scale - 50);
-    speak(this.firstTry ? '딩동댕! 정답이에요!' : '맞았어요! 잘했어요!');
+    speak(this.firstTry ? (p.review ? '다시 도전 성공! 딩동댕!' : '딩동댕! 정답이에요!') : '맞았어요! 잘했어요!');
+    if (p.review && this.firstTry) this.customer.say('이번엔 맞혔다! 👍', 1.8);
     this.customer.setAnim('happy');
     this.cat.play('happy', 1.4);
     $('#order .order-expr').innerHTML = `${p.left}<span class="ans">${p.answer}</span>${p.right}`;
@@ -903,6 +933,16 @@ class Game {
       st.appendChild(s);
     }
     box.querySelector('.earned').innerHTML = `코인 <b>+${this.earned}</b> 모았어요!`;
+    this.mission('candy.finish');
+    // 잘하면 다음 단계, 어려워하면 한 단계 쉽게 권하기 (10 만들기는 단계가 하나)
+    const sug = this.mode === 'ten' ? null : suggestStep(this.oks, this.diff);
+    const next = box.querySelector('.next-step');
+    next.hidden = !sug;
+    if (sug) {
+      const to = this.diff + (sug === 'up' ? 1 : -1);
+      next.dataset.diff = to;
+      next.textContent = sug === 'up' ? `🚀 다음 단계 도전! (${DIFF_NAME[to]})` : `🐢 한 단계 쉽게 해 볼까? (${DIFF_NAME[to]})`;
+    }
     box.hidden = false;
     $('#dots').hidden = true;
     sfx.fanfare();

@@ -4,10 +4,14 @@
 //   화면 y = 지평선 + FY / z,  화면 x = 가운데 + x * FX / z,  크기 = FX / z
 // 길은 세 갈래(x = -1, 0, 1). 물체는 지평선(z = FAR)에서 생겨 앞으로 다가온다.
 import { sfx, speak, unlockAudio, isMuted, setMuted } from '../audio.js';
-import { makeProblemSet, MODES } from '../problems.js';
+import { makeProblemSet, buildProblem } from '../problems.js';
+import { load, save, getCoins, addCoins as addToWallet } from '../save.js';
+import { beginSession, record, dueReviews, suggestStep } from '../learn.js';
+import { track } from '../missions.js';
+import { equippedHat, drawHat } from '../shop.js';
 import { safeInsets, visibleArea, onViewportChange } from '../viewport.js';
 import * as D from './draw.js';
-import { SPRITES, loadSprites, drawSpriteFrame } from '../sprites.js';
+import { SPRITES, loadSprites, drawSpriteFrame, headOf } from '../sprites.js';
 
 const GATES = 5;              // 한 판 = 문제 5개 → 기지 도착
 const ZP = 2;                 // 펭귄이 서 있는 깊이
@@ -19,7 +23,7 @@ const JUMP_TIME = 0.75;
 // 깃발 통과 슬로모션 — 어려울수록 일찍, 더 느리게 (생각할 시간). 실제로 느린 시간 ≈ NEAR / (6 × SLOW)초: 3 · 5.4 · 8.3 · 12초
 const SLOW = { 1: 0.25, 2: 0.2, 3: 0.16, 4: 0.13 };      // 배속
 const SLOW_NEAR = { 1: 4.5, 2: 6.5, 3: 8, 4: 9.5 };      // 깃발이 이만큼(깊이) 가까워지면 느려지기 시작
-const SAY_NEAR = 16;          // 간판이 읽힐 만큼 가까워지면 문제를 읽어 준다
+const SAY_NEAR = 22;          // 간판이 읽힐 만큼 가까워지면 문제를 읽어 준다
 const SLOW_HOLD = 0.6;        // 통과 뒤 슬로모션을 유지하는 시간(실제 초)
 const OP_WORD = { add: '더하기', sub: '빼기', mul: '곱하기', div: '나누기', ten: '더하기' };
 
@@ -27,10 +31,8 @@ const $ = (s) => document.querySelector(s);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
-const store = {
-  load(key, fallback) { try { const v = localStorage.getItem(key); return v == null ? fallback : JSON.parse(v); } catch { return fallback; } },
-  save(key, v) { try { localStorage.setItem(key, JSON.stringify(v)); } catch { /* 저장 불가 */ } },
-};
+const store = { load, save };   // 기기 저장소 (save.js)
+const DIFF_NAME = { 1: '한 자리', 2: '두 자리·한 자리', 3: '두 자리·두 자리', 4: '세 자리·세 자리' };
 
 if (!CanvasRenderingContext2D.prototype.roundRect) {
   CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
@@ -66,8 +68,9 @@ class PenguinGame {
     this.canvas = $('#scene');
     this.ctx = this.canvas.getContext('2d');
     this.time = 0;
-    this.coins = store.load('nyang.coins', 0);
+    this.coins = getCoins();
     this.diff = store.load('penguin.diff', 1);
+    this.hat = equippedHat();
     this.state = 'menu';
     this.reset();
     this.fit();
@@ -78,7 +81,7 @@ class PenguinGame {
 
     let last = performance.now();
     const loop = (now) => {
-      const dt = Math.min(0.05, (now - last) / 1000);
+      const dt = Math.max(0, Math.min(0.05, (now - last) / 1000));   // 첫 프레임은 시간이 살짝 거꾸로일 수 있다
       last = now;
       this.update(dt);
       this.draw();
@@ -181,6 +184,13 @@ class PenguinGame {
     renderSnd();
     $('#result .again').addEventListener('click', () => { sfx.tap(); this.start(this.mode); });
     $('#result .home').addEventListener('click', () => { sfx.tap(); this.showMenu(); });
+    $('#result .next-step').addEventListener('click', (e) => {
+      sfx.tap();
+      this.diff = Number(e.currentTarget.dataset.diff);
+      store.save('penguin.diff', this.diff);
+      this.renderDiff();
+      this.start(this.mode);
+    });
   }
 
   steer(d) {
@@ -204,11 +214,15 @@ class PenguinGame {
 
   renderCoins() { $('#coin-count').textContent = this.coins; }
 
+  // 오늘의 미션에 알리기 (끝난 미션이 있으면 보상 코인이 지갑에 들어온다)
+  mission(event, n = 1) {
+    if (track(event, n)) { this.coins = getCoins(); this.renderCoins(); }
+  }
+
   addCoins(n) {
     if (n <= 0) return;
-    this.coins += n;
+    this.coins = addToWallet(n);
     this.earned += n;
-    store.save('nyang.coins', this.coins);
     this.renderCoins();
     const c = $('#coins');
     c.classList.remove('bump'); void c.offsetWidth; c.classList.add('bump');
@@ -247,6 +261,16 @@ class PenguinGame {
     this.runId = (this.runId || 0) + 1;
     $('#fish-count').textContent = 0;
     this.problems = makeProblemSet(mode, 'number', GATES, this.diff);
+    // 전에 틀린 문제가 다시 나올 때가 됐으면 하나 섞는다 (간판에 '다시 도전')
+    beginSession();
+    const due = dueReviews({ mode, diff: this.problems[0].diff }, 1)[0];
+    if (due) {
+      const rp = buildProblem(due.mode, 'number', due.diff, due.a, due.b);
+      rp.review = true;
+      const same = this.problems.findIndex((q) => q.a === rp.a && q.b === rp.b);
+      this.problems[same >= 0 ? same : 1 + Math.floor(Math.random() * (GATES - 1))] = rp;
+    }
+    this.oks = [];
     this.state = 'run';
     this.phase = 'gap';
     this.phaseT = 2.2;
@@ -307,14 +331,17 @@ class PenguinGame {
     const quiz = $('#quiz');
     quiz.hidden = false;
     quiz.style.animation = 'none'; void quiz.offsetWidth; quiz.style.animation = '';
+    record(p, n === p.answer);
+    this.oks.push(n === p.answer);
     if (n === p.answer) {
       this.results.push('star');
+      this.mission('penguin.star');
       sfx.correct();
       this.setMood('happy', 1.3);
       this.burst(P.cx + this.px * P.fx / ZP, P.playerY - 120, 24);
       chips[i].classList.add('right');
-      msg.textContent = '딩동댕! 잘했어요! 🎉';
-      speak('딩동댕!');
+      msg.textContent = p.review ? '다시 도전 성공! 🎉' : '딩동댕! 잘했어요! 🎉';
+      speak(p.review ? '다시 도전 성공!' : '딩동댕!');
       this.addCoins(3 + (p.diff - 1));
     } else {
       this.results.push('miss');
@@ -469,6 +496,7 @@ class PenguinGame {
     if (o.kind === 'fish' && Math.abs(this.px - o.x) < 0.5) {
       o.gone = true;
       this.fish++;
+      this.mission('penguin.fish');
       sfx.pop(this.fish % 8);
       $('#fish-count').textContent = this.fish;
       const fc = $('#fish');
@@ -496,6 +524,7 @@ class PenguinGame {
     $('#pad').hidden = true;
     // 물고기 2마리마다 코인 1개
     this.addCoins(Math.floor(this.fish / 2));
+    this.mission('penguin.finish');
     const id = this.runId;
     setTimeout(() => { if (this.state === 'run' && this.runId === id) this.showResult(); }, 2400);
   }
@@ -514,6 +543,15 @@ class PenguinGame {
       st.appendChild(s);
     }
     box.querySelector('.earned').innerHTML = `🐟 ${this.fish}마리 · 코인 <b>+${this.earned}</b>`;
+    // 잘하면 다음 단계, 어려워하면 한 단계 쉽게 권하기 (10 만들기는 단계가 하나)
+    const sug = this.mode === 'ten' ? null : suggestStep(this.oks, this.diff);
+    const next = box.querySelector('.next-step');
+    next.hidden = !sug;
+    if (sug) {
+      const to = this.diff + (sug === 'up' ? 1 : -1);
+      next.dataset.diff = to;
+      next.textContent = sug === 'up' ? `🚀 다음 단계 도전! (${DIFF_NAME[to]})` : `🐢 한 단계 쉽게 해 볼까? (${DIFF_NAME[to]})`;
+    }
     const review = box.querySelector('.review');
     review.innerHTML = '';
     if (this.missed.length) {
@@ -566,7 +604,7 @@ class PenguinGame {
           break;
         }
         case 'gate':
-          D.drawQuizSign(ctx, p, [o.p.left, '?', o.p.right], alpha, o.picked === null ? null : o.p.answer);
+          D.drawQuizSign(ctx, p, [o.p.left, '?', o.p.right], alpha, o.picked === null ? null : o.p.answer, o.p.review);
           o.choices.forEach((n, i) => {
             const state = o.picked === null ? null : i === o.right ? 'right' : i === o.picked ? 'wrong' : 'dim';
             D.drawFlag(ctx, proj(i - 1, o.z), n, i, alpha * (state === 'dim' ? 0.5 : 1), state);
@@ -636,6 +674,7 @@ class PenguinGame {
       ctx.translate(x, y + S * 0.45 * fallP);
       ctx.rotate(Math.sin(t * 18) * 0.1);
       drawSpriteFrame(ctx, sheet, `row${row}`, col, scale);
+      this.drawHatOn(ctx, row, col, scale, t);
       ctx.restore();
       ctx.save();
       ctx.fillStyle = 'rgba(111, 182, 239, .9)';
@@ -647,7 +686,15 @@ class PenguinGame {
     ctx.translate(x, y - lift);
     if (running && frames === F.run) ctx.rotate(Math.sin(t * 9) * 0.05);  // 뒤뚱뒤뚱
     drawSpriteFrame(ctx, sheet, `row${row}`, col, scale);
+    this.drawHatOn(ctx, row, col, scale, t);
     ctx.restore();
+  }
+
+  // 상점에서 산 모자 (원점 = 펭귄 발밑)
+  drawHatOn(ctx, row, col, scale, t) {
+    if (!this.hat) return;
+    const head = headOf('penguin', `row${row}`, col, scale);
+    if (head) drawHat(ctx, this.hat, head.x, head.y, head.size, t);
   }
 }
 
@@ -662,7 +709,10 @@ const PENGUIN_FRAMES = {
   fall:  [[4, 0]],
 };
 
-const go = () => new PenguinGame();
+const go = () => {
+  const game = new PenguinGame();
+  if (new URLSearchParams(location.search).has('debug')) window.__game = game;   // 테스트용
+};
 const fontReady = document.fonts && document.fonts.load
   ? Promise.race([document.fonts.load('30px Jua'), new Promise((r) => setTimeout(r, 1500))])
   : Promise.resolve();

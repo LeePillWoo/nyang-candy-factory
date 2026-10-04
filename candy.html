@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=10">
+  <link rel="stylesheet" href="style.css?v=20">
 </head>
 <body>
   <div id="stage">
@@ -78,6 +78,7 @@
         <h2 class="title small">오늘 영업 끝!</h2>
         <div class="stars"></div>
         <p class="earned"></p>
+        <button class="btn go next-step" hidden></button>
         <div class="row">
           <button class="btn go again">한 번 더!</button>
           <button class="btn go home">처음으로</button>
@@ -90,17 +91,21 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/sprites.js": "./src/sprites.js?v=10",
-      "./src/characters.js": "./src/characters.js?v=10",
-      "./src/actor.js": "./src/actor.js?v=10",
-      "./src/audio.js": "./src/audio.js?v=10",
-      "./src/problems.js": "./src/problems.js?v=10",
-      "./src/work.js": "./src/work.js?v=10",
-      "./src/viewport.js": "./src/viewport.js?v=10",
-      "./src/blocks.js": "./src/blocks.js?v=10"
+      "./src/sprites.js": "./src/sprites.js?v=20",
+      "./src/characters.js": "./src/characters.js?v=20",
+      "./src/actor.js": "./src/actor.js?v=20",
+      "./src/audio.js": "./src/audio.js?v=20",
+      "./src/problems.js": "./src/problems.js?v=20",
+      "./src/work.js": "./src/work.js?v=20",
+      "./src/viewport.js": "./src/viewport.js?v=20",
+      "./src/blocks.js": "./src/blocks.js?v=20",
+      "./src/save.js": "./src/save.js?v=20",
+      "./src/learn.js": "./src/learn.js?v=20",
+      "./src/missions.js": "./src/missions.js?v=20",
+      "./src/shop.js": "./src/shop.js?v=20"
     }
   }
   </script>
-  <script type="module" src="src/game.js?v=10"></script>
+  <script type="module" src="src/game.js?v=20"></script>
 </body>
 </html>

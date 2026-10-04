@@ -1,4 +1,6 @@
 // 냥냥 주방 그리기 — 모두 Canvas 코드. (0,0)=무대 왼쪽 위, 1280×800 또는 720×H.
+import { drawWall, drawDeco } from '../shop.js';
+
 export const OUTLINE = '#4a3434';
 const FONT = 'Jua, sans-serif';
 
@@ -6,12 +8,10 @@ function rr(ctx, x, y, w, h, r) { ctx.beginPath(); ctx.roundRect(x, y, w, h, r);
 function line(ctx, w = 4) { ctx.lineWidth = w; ctx.strokeStyle = OUTLINE; ctx.lineJoin = 'round'; ctx.lineCap = 'round'; }
 
 // ── 배경: 손님 홀(벽) · 계산대 · 주방 바닥 ───────────────────
-export function drawRoom(ctx, W, H, L, t) {
-  // 벽 (줄무늬 벽지)
-  ctx.fillStyle = '#ffe9c2';
-  ctx.fillRect(0, 0, W, L.counterY);
-  ctx.fillStyle = 'rgba(255, 255, 255, .45)';
-  for (let x = 0; x < W; x += 56) ctx.fillRect(x, 0, 24, L.counterY);
+// decor = 상점에서 꾸민 것 { wall, deco: [...] }
+export function drawRoom(ctx, W, H, L, t, decor = { wall: null, deco: [] }) {
+  // 벽 (벽지는 상점에서 바꿀 수 있다)
+  drawWall(ctx, decor.wall, 0, 0, W, L.counterY, t);
   // 창문 두 개 (구름이 지나감)
   for (const wx of [W * 0.3, W * 0.7]) {
     const ww = Math.min(170, W * 0.2), wh = 92, wy = L.counterY - 300;
@@ -34,6 +34,10 @@ export function drawRoom(ctx, W, H, L, t) {
   line(ctx, 5); ctx.stroke();
   ctx.fillStyle = '#ffd65c';
   ctx.beginPath(); ctx.arc(36, L.counterY - 95, 6, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+
+  // 꾸미기: 냥이 액자 · 반짝 전구
+  if (decor.deco.includes('deco.frame')) drawDeco(ctx, 'deco.frame', W - 64, L.counterY - 128, 0.7, t);
+  if (decor.deco.includes('deco.lights')) drawDeco(ctx, 'deco.lights', W * 0.07, L.counterY - 262, (W * 0.86) / 360, t);
 
   // 주방 바닥 (체크 타일)
   const top = L.counterY;
@@ -58,6 +62,11 @@ export function drawCounter(ctx, W, L) {
   ctx.strokeStyle = 'rgba(74, 52, 52, .25)';
   ctx.lineWidth = 3;
   for (let x = 40; x < W; x += 120) { ctx.beginPath(); ctx.moveTo(x, y + 28); ctx.lineTo(x, y + 66); ctx.stroke(); }
+}
+
+// 계산대 위 장식 (화분)
+export function drawCounterDeco(ctx, W, L, t, decor) {
+  if (decor && decor.deco.includes('deco.plant')) drawDeco(ctx, 'deco.plant', W - 44, L.counterY - 40, 0.62, t);
 }
 
 // 2인: 주방 가운데 나눔 줄 + 이름표
@@ -489,7 +498,7 @@ function drawToken(ctx, tk, x, cy, answer) {
 //   opt.tail: 꼬리 길이(높이 엇갈린 말풍선은 길게), opt.minX/maxX: 화면 밖으로 안 나가게, opt.maxScale: 넓으면 그림 크게
 export function drawOrder(ctx, cx, bottom, maxW, c, t, opt = {}) {
   const tail = opt.tail || 14, maxScale = opt.maxScale || 1;
-  const answer = c.state === 'eat' || c.state === 'leave' ? c.p.answer : null;
+  const answer = c.state === 'eat' || c.state === 'leave' || c.state === 'pay' ? c.p.answer : null;
   const ICON = 36, PAD = 14, GAP = 8;
   const measure = (tks) => {
     let w = 0, h = 0;
@@ -502,9 +511,14 @@ export function drawOrder(ctx, cx, bottom, maxW, c, t, opt = {}) {
   let s = Math.min(maxScale, avail / m.w);
   if (s < 0.62 && tokens !== c.textTokens) { tokens = c.textTokens; m = measure(tokens); s = Math.min(maxScale, avail / m.w); }
   const cw = m.w * s, chh = m.h * s;
-  const w = Math.max(cw + PAD * 2 + ICON, 120), h = Math.max(chh, 30) + 40;
+  // 아래 작은 글 (다시 도전 · 단체 손님 · 대왕 손님이 받은 수)
+  const NOTE = 20;
+  ctx.font = `${NOTE}px ${FONT}`;
+  const noteW = c.note ? ctx.measureText(c.note).width + 28 : 0;
+  const w = Math.max(cw + PAD * 2 + ICON, 120, noteW), h = Math.max(chh, 30) + 40 + (c.note ? NOTE + 6 : 0);
   let x = cx - w / 2;
   if (opt.maxX != null) x = Math.max(opt.minX || 0, Math.min(x, opt.maxX - w));
+  if (opt.minY != null && bottom - h < opt.minY) bottom = opt.minY + h;   // 위 HUD 를 가리지 않게 (큰 손님)
   const y = bottom - h;
   const pop = c.bubbleT < 0.3 ? 0.6 + c.bubbleT / 0.3 * 0.4 : 1;
   ctx.save();
@@ -530,8 +544,14 @@ export function drawOrder(ctx, cx, bottom, maxW, c, t, opt = {}) {
   let tx = 0;
   for (const tk of tokens) { drawToken(ctx, tk, tx, 0, answer); tx += tk.w + GAP; }
   ctx.restore();
+  if (c.note) {
+    ctx.font = `${NOTE}px ${FONT}`;
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillStyle = c.kind === 'boss' ? '#e0701a' : '#8a6f66';
+    ctx.fillText(c.note, x + w / 2, y + 10 + Math.max(chh, 30) + NOTE / 2 + 4);
+  }
   // 기다림 막대 (줄어도 손님은 떠나지 않아요)
-  if (c.state === 'wait') {
+  if (c.state === 'wait' && c.kind !== 'boss') {
     const r = c.patience / c.patienceMax;
     const bw = w - 28;
     rr(ctx, x + 14, y + h - 18, bw, 9, 5); ctx.fillStyle = '#f3ece6'; ctx.fill();
