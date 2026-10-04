@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=15">
-  <link rel="stylesheet" href="kitchen.css?v=15">
+  <link rel="stylesheet" href="style.css?v=16">
+  <link rel="stylesheet" href="kitchen.css?v=16">
 </head>
 <body class="kitchen">
   <div id="stage">
@@ -34,12 +34,13 @@
     <section id="menu" class="screen">
       <div class="panel">
         <h1 class="title"><span>냥냥</span> 주방</h1>
-        <p class="sub">손님 주문만큼 만두를 구워서 배달해요!</p>
+        <p class="sub">손님 주문만큼 구워서 배달해요!</p>
+        <div class="dishes" aria-label="오늘의 메뉴"></div>
         <ol class="steps">
-          <li><b>🕹️</b>화면을 꾹 누르고 밀어서 걷기</li>
-          <li><b>📦</b>상자 옆에서 눌러 만두 담기</li>
-          <li><b>🔥</b>화덕 옆에서 눌러 굽기 · 들기</li>
-          <li><b>🐻</b>손님 앞에서 눌러 배달!</li>
+          <li><b>🕹️</b>꾹 누르고 밀어서 걷기</li>
+          <li><b>📦</b>상자 옆에서 눌러 담기</li>
+          <li><b>🔥</b>화덕에서 굽고 들기</li>
+          <li><b>🐻</b>손님 앞에서 배달!</li>
         </ol>
         <div class="players" role="radiogroup" aria-label="몇 명이 할까요">
           <button class="player-pick" data-players="1" aria-checked="true"><span class="pp-icon">🐱</span><span>혼자 하기</span></button>
@@ -62,7 +63,9 @@
         <h2 class="title small">영업 끝!</h2>
         <div class="stars"></div>
         <p class="served-line"></p>
+        <p class="dish-line"></p>
         <p class="team-line"></p>
+        <p class="unlock-line"></p>
         <p class="best-line"></p>
         <p class="earned"></p>
         <div class="row">
@@ -77,15 +80,15 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/audio.js": "./src/audio.js?v=15",
-      "./src/problems.js": "./src/problems.js?v=15",
-      "./src/viewport.js": "./src/viewport.js?v=15",
-      "./src/sprites.js": "./src/sprites.js?v=15",
-      "./src/characters.js": "./src/characters.js?v=15",
-      "./src/kitchen/draw.js": "./src/kitchen/draw.js?v=15"
+      "./src/audio.js": "./src/audio.js?v=16",
+      "./src/problems.js": "./src/problems.js?v=16",
+      "./src/viewport.js": "./src/viewport.js?v=16",
+      "./src/sprites.js": "./src/sprites.js?v=16",
+      "./src/characters.js": "./src/characters.js?v=16",
+      "./src/kitchen/draw.js": "./src/kitchen/draw.js?v=16"
     }
   }
   </script>
-  <script type="module" src="src/kitchen/game.js?v=15"></script>
+  <script type="module" src="src/kitchen/game.js?v=16"></script>
 </body>
 </html>

@@ -1,14 +1,16 @@
 // 냥냥 주방 — 요리사를 조이스틱으로 움직여 요리하고 배달하는 주방 게임.
 //   조이스틱: 화면 아무 곳이나 누르면 그 자리에 생기고, 밀면 요리사가 걷는다 (2인: 화면 왼쪽 = 1P, 오른쪽 = 2P)
 //   물건·손님은 요리사가 '가까이' 있을 때만 눌러서 쓸 수 있다.
-//   ① 만두 상자 옆에서 상자를 누른 횟수만큼 집기 (1개씩 / 5개씩)
-//   ② 불(화덕) 옆에서 눌러 팬에 올려 굽기 — 굽는 동안 다른 일을 할 수 있다
-//   ③ 다 구워지면(띵!) 팬을 눌러 접시를 든다
-//   ④ 손님 앞으로 가서 손님을 누르면 배달 — 만두 수가 그 손님 주문의 답과 같으면 성공
-//   PC: 1P = WASD + 스페이스(누르기), 2P = 방향키 + 엔터 (혼자면 방향키도 1P)
+//   레시피: 🥟 만두(1·5개씩) · 🍡 꼬치(1·10개씩) · 🍪 쿠키(1·2개씩) — 음식마다 '묶음'이 달라 수를 만드는 방법이 달라진다.
+//   ① 재료 상자 옆에서 상자를 누른 횟수만큼 집기 (왼쪽 칸 1개, 오른쪽 칸 묶음)
+//   ② 화덕 옆에서 눌러 굽기 — 굽는 동안 다른 일을 할 수 있다
+//   ③ 다 구워지면(띵!) 화덕을 눌러 접시를 든다
+//   ④ 손님 앞으로 가서 손님을 누르면 배달 — 주문한 음식이고, 수가 답과 같으면 성공
+//   PC: 1P = WASD + 스페이스(누르기)/Q(묶음), 2P = 방향키 + 엔터/(묶음) (혼자면 방향키도 1P)
 //   틀려도 벌 없음: 손님이 "이건 아니에요" 하고, 다른 손님에게 주거나 버리고 다시 하면 된다.
-//   자기 요리사를 누르면 든 만두를 하나 내려놓는다(너무 많이 집었을 때).
-//   덤: 콤보 → 피버(코인 2배), VIP 손님 👑, 처음에는 손가락 안내, 모드별 최고 기록.
+//   든 쟁반을 누르면 하나 내려놓는다(너무 많이 집었을 때).
+//   덤: 그림 주문(주사위·10칸 판·묶음), 척척 보너스(묶음을 잘 쓰면), 콤보 → 피버(코인 2배), VIP 손님 👑,
+//       처음에는 손가락 안내, 모드별 최고 기록, 배달한 접시 수로 새 레시피 열기.
 //   1인: 냥이 · 2인: 주방을 반으로 나눠 1P 냥이 + 2P 펭귄, 손님은 함께 받는다(협동).
 import { sfx, speak, unlockAudio, isMuted, setMuted } from '../audio.js';
 import { makeProblemSet } from '../problems.js';
@@ -18,9 +20,17 @@ import { CHARACTERS, FEATURED_CUSTOMERS } from '../characters.js';
 import * as D from './draw.js';
 
 const SHIFT = 150;            // 한 판(영업 시간), 초
-const COOK_TIME = 3;          // 굽는 시간, 초
+// 레시피: 음식마다 묶음 크기(수를 만드는 도구)와 굽는 시간이 다르다.
+// unlock = 지금까지 배달한 접시 수가 이만큼 되면 메뉴에 추가된다
+const DISHES = {
+  mandu:  { name: '만두', emoji: '🥟', pack: 5,  cook: 3, unlock: 0,  sound: '지글지글' },
+  kkochi: { name: '꼬치', emoji: '🍡', pack: 10, cook: 3, unlock: 4,  sound: '치익치익' },
+  cookie: { name: '쿠키', emoji: '🍪', pack: 2,  cook: 4, unlock: 10, sound: '노릇노릇' },
+};
+const DISH_KEYS = Object.keys(DISHES);
+const PIC_RATE = 0.4;         // 그림 주문(주사위 · 10칸 판 · 묶음) 비율 — 10 만들기는 0.5
 const PATIENCE = 45;          // 손님 기다림 막대(다 줄어도 떠나지 않음 — 빨리 주면 보너스만)
-const CAP = 20;               // 한 번에 들 수 있는 만두
+const CAP = 20;               // 한 번에 들 수 있는 음식
 const CHEF_SPEED = 470;       // 요리사 걷는 빠르기 (조이스틱 끝까지 밀었을 때, px/초)
 const STICK_R = 70;           // 조이스틱 반지름
 const STICK_DEAD = 14;        // 이만큼 밀어야 걷기 시작 (그보다 짧게 누르면 '누르기')
@@ -47,6 +57,13 @@ const PENGUIN_CHEF = {
   happy: { frames: [[4, 4], [1, 0], [4, 4], [0, 5]], fps: 5 },
   sad: { frames: [[3, 5]], fps: 1 },
 };
+
+// n 개를 만드는 가장 적은 누르기: 묶음 k 개 + 낱개로 채우거나 덜기 (쟁반을 누르면 하나 덜기)
+function fewestTaps(n, pack) {
+  let best = n;
+  for (let k = 1; k * pack <= Math.min(CAP, n + pack); k++) best = Math.min(best, k + Math.abs(n - k * pack));
+  return best;
+}
 
 const $ = (s) => document.querySelector(s);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
@@ -103,10 +120,10 @@ function drawCharacter(ctx, key, animName, t, x, y, h, flip = false) {
 // ── 무대 크기 ─────────────────────────────────────────
 let W = 1280, H = 800, PORTRAIT = false;
 
-// 주방 배치: 계산대 높이, 손님 자리, 요리사별 상자·불·버리기 위치
-function makeLayout(players, portrait) {
+// 주방 배치: 계산대 높이, 손님 자리, 요리사별 재료 상자(오늘 메뉴마다 하나)·화덕·버리기 위치
+function makeLayout(players, portrait, dishes = ['mandu']) {
   // 세로 화면은 키가 클수록 손님 홀도 크게
-  const L = { counterY: portrait ? Math.round(Math.max(470, H * 0.34)) : 360 };
+  const L = { counterY: portrait ? Math.round(Math.max(515, H * 0.35)) : 360 };
   const F0 = L.counterY + 160, F1 = H - (players === 2 ? 100 : 74);
   const fy = (f) => Math.round(F0 + f * (F1 - F0));
   const n = SEATS[players];
@@ -116,31 +133,41 @@ function makeLayout(players, portrait) {
   L.chefH = portrait ? 156 : 166;
   L.custY = L.counterY - 4;           // 손님 발 (계산대 뒤에 가려짐)
   L.door = { x: -70, y: L.custY };
-  const box = (amount, x, y, owner = 0) => ({ kind: 'box', amount, x, y, w: 132, h: 100, owner });
-  const stove = (x, y, owner = 0) => ({ kind: 'stove', x, y, w: 156, h: 120, owner, state: 'empty', n: 0, t: 0, cookTime: COOK_TIME });
+  const duo = players === 2;
+  const bw = duo ? 150 : 168, bh = duo ? 92 : 100;
+  const box = (dish, x, y, owner = 0) => ({ kind: 'box', dish, pack: DISHES[dish].pack, x, y, w: bw, h: bh, owner });
+  const stove = (x, y, owner = 0) => ({ kind: 'stove', x, y, w: 156, h: 120, owner, state: 'empty', n: 0, t: 0, cookTime: 3, dish: null, taps: 0 });
   const trash = (x, y, owner = 0) => ({ kind: 'trash', x, y, w: 84, h: 92, owner });
+  // 재료 상자는 왼쪽 벽을 따라 세로로 (오늘 메뉴 수만큼)
+  const SLOTS = {
+    1: { 1: [0.3], 2: [0.0, 0.75], 3: [-0.05, 0.47, 0.99] },          // 가로
+    p: { 1: [0.2], 2: [0.0, 0.55], 3: [0.0, 0.42, 0.84] },             // 세로 1인
+    2: { 1: [0.25], 2: [0.0, 0.75], 3: [-0.05, 0.47, 0.99] },          // 가로 2인
+    p2: { 1: [0.2], 2: [0.0, 0.45], 3: [0.0, 0.36, 0.72] },            // 세로 2인
+  };
+  const slots = SLOTS[portrait ? (duo ? 'p2' : 'p') : (duo ? 2 : 1)][dishes.length] || [0.3];
+  const boxesAt = (x) => dishes.map((d, i) => box(d, x, fy(slots[i])));
   const objs = [], starts = [];
-  if (players === 1) {
+  if (!duo) {
     if (portrait) {
-      objs.push(box(1, 120, fy(0.0)), box(5, 120, fy(0.62)), stove(380, fy(0.05)), stove(590, fy(0.05)), trash(610, fy(0.66)));
-      starts.push({ x: 360, y: fy(0.95) });
+      objs.push(...boxesAt(120), stove(400, fy(0.05)), stove(600, fy(0.05)), trash(610, fy(0.7)));
+      starts.push({ x: 400, y: fy(0.95) });
     } else {
-      objs.push(box(1, 140, fy(0.0)), box(5, 140, fy(0.75)), stove(520, fy(0.05)), stove(780, fy(0.05)), trash(1150, fy(0.6)));
+      objs.push(...boxesAt(130), stove(540, fy(0.05)), stove(800, fy(0.05)), trash(1150, fy(0.6)));
       starts.push({ x: 650, y: fy(0.9) });
     }
   } else {
     const mirror = (o) => ({ ...o, x: W - o.x, owner: 1 });
     let mine;
     if (portrait) {
-      mine = [box(1, 82, fy(0.0)), box(5, 82, fy(0.42)), stove(262, fy(0.02)), stove(262, fy(0.48)), trash(86, fy(0.86))];
-      starts.push({ x: 220, y: fy(0.95) }, { x: W - 220, y: fy(0.95) });
+      mine = [...boxesAt(82), stove(262, fy(0.0)), stove(262, fy(0.55)), trash(262, fy(0.97))];
+      starts.push({ x: 170, y: fy(0.95) }, { x: W - 170, y: fy(0.95) });
     } else {
-      mine = [box(1, 82, fy(0.0)), box(5, 82, fy(0.75)), stove(268, fy(0.05)), stove(458, fy(0.05)), trash(560, fy(0.7))];
+      mine = [...boxesAt(82), stove(275, fy(0.05)), stove(455, fy(0.05)), trash(575, fy(0.75))];
       starts.push({ x: 330, y: fy(0.9) }, { x: W - 330, y: fy(0.9) });
     }
     mine.forEach((o) => { o.owner = 0; objs.push(o); });
     mine.forEach((o) => objs.push(mirror(o)));
-    objs.forEach((o) => { if (o.kind === 'stove') { o.state = 'empty'; o.n = 0; o.t = 0; } });
   }
   // 요리사가 서서 일하는 자리: 물건 바로 뒤 (화덕 뒤에 선 요리사처럼 물건이 다리를 가린다)
   objs.forEach((o) => { o.use = { x: o.x, y: o.y - o.h / 2 + 26 }; });
@@ -210,12 +237,12 @@ class KitchenGame {
   // 화면을 돌리면 배치를 새로 잡되, 불 위의 만두·손님·든 것은 그대로
   relayout() {
     const old = this.L;
-    this.L = makeLayout(this.players, PORTRAIT);
+    this.L = makeLayout(this.players, PORTRAIT, this.state === 'menu' ? this.unlockedDishes() : this.dishes);
     if (!old) return;
     const oldStoves = old.objs.filter((o) => o.kind === 'stove');
     this.L.objs.filter((o) => o.kind === 'stove').forEach((o, i) => {
       const s = oldStoves[i];
-      if (s) { o.state = s.state; o.n = s.n; o.t = s.t; }
+      if (s) for (const k of ['state', 'n', 't', 'dish', 'taps', 'cookTime']) o[k] = s[k];
     });
     this.L.seats.forEach((seat, i) => {
       const s = old.seats[i];
@@ -274,7 +301,9 @@ class KitchenGame {
       this.keys.add(k);
       if (e.repeat) return;
       if (k === ' ' || k === 'e') this.interact(0);
+      else if (k === 'q') this.interact(0, 'pack');
       else if (k === 'enter') this.interact(this.players === 2 ? 1 : 0);
+      else if (k === '/') this.interact(this.players === 2 ? 1 : 0, 'pack');
     });
     window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
     window.addEventListener('blur', () => this.keys.clear());
@@ -301,7 +330,25 @@ class KitchenGame {
   renderPlayers() {
     document.querySelectorAll('.player-pick').forEach((b) => b.setAttribute('aria-checked', String(Number(b.dataset.players) === this.players)));
     $('#menu').classList.toggle('duo', this.players === 2);
-    if (this.state === 'menu') this.L = makeLayout(this.players, PORTRAIT);
+    if (this.state === 'menu') this.L = makeLayout(this.players, PORTRAIT, this.unlockedDishes());
+  }
+
+  // 지금까지 배달한 접시 수로 열린 레시피
+  unlockedDishes() {
+    const total = store.load('kitchen.total', 0);
+    return DISH_KEYS.filter((k) => DISHES[k].unlock <= total);
+  }
+
+  // 시작 화면의 '오늘의 메뉴' (잠긴 레시피는 남은 접시 수)
+  renderDishes() {
+    const total = store.load('kitchen.total', 0);
+    const box = $('#menu .dishes');
+    if (!box) return;
+    box.innerHTML = DISH_KEYS.map((k) => {
+      const d = DISHES[k];
+      const open = d.unlock <= total;
+      return `<span class="dish${open ? '' : ' locked'}"><b>${d.emoji}</b>${d.name}<small>${open ? `1 · ${d.pack}개씩` : `🔒 ${d.unlock - total}접시 더`}</small></span>`;
+    }).join('');
   }
 
   renderCoins() { $('#coin-count').textContent = this.coins; }
@@ -321,7 +368,8 @@ class KitchenGame {
     this.state = 'menu';
     this.runId = (this.runId || 0) + 1;
     if ('speechSynthesis' in window) speechSynthesis.cancel();
-    this.L = makeLayout(this.players, PORTRAIT);
+    this.L = makeLayout(this.players, PORTRAIT, this.unlockedDishes());
+    this.renderDishes();
     this.chefs = [];
     this.customers = [];
     this.floats = [];
@@ -346,7 +394,10 @@ class KitchenGame {
     this.lastSpeak = -10;
     this.floats = [];
     this.customers = [];
-    this.L = makeLayout(this.players, PORTRAIT);
+    this.smart = 0;
+    this.dishes = this.unlockedDishes();
+    this.dishServed = {};
+    this.L = makeLayout(this.players, PORTRAIT, this.dishes);
     this.sticks.clear();
     this.chefs = this.L.starts.slice(0, this.players).map((s, p) => ({
       p, ...CHEFS[p], x: s.x, y: s.y, flip: false, carry: null, moved: false,
@@ -373,6 +424,7 @@ class KitchenGame {
       if (r && x > r.x - 10 && x < r.x + r.w + 30 && y > r.y - 20 && y < r.y + r.h + 10) {
         if (!ch.carry.cooked) {
           ch.carry.n -= 1;
+          ch.carry.taps += 1;
           this.float(ch.x, r.y - 10, '-1', '#ff8fab');
           sfx.tap();
           if (ch.carry.n <= 0) ch.carry = null;
@@ -385,7 +437,8 @@ class KitchenGame {
       if (Math.abs(x - o.x) < o.w / 2 + 14 && Math.abs(y - o.y) < o.h / 2 + 20) {
         const ch = this.chefs[o.owner];
         if (!ch) return;
-        if (this.isNear(ch, o)) this.useObject(ch, o);
+        // 재료 상자는 왼쪽 칸 = 1개, 오른쪽 칸 = 묶음
+        if (this.isNear(ch, o)) this.useObject(ch, o, o.kind === 'box' && x >= o.x ? 'pack' : 'one');
         else { this.chefSay(ch, '가까이 가서 눌러요!'); o.pingT = 1.2; }
         return;
       }
@@ -413,7 +466,7 @@ class KitchenGame {
   }
 
   // 키보드 '누르기': 가까운 손님(구운 접시를 들었을 때) → 가까운 물건
-  interact(i) {
+  interact(i, part = 'one') {
     const ch = this.chefs[i];
     if (!ch || this.state !== 'play') return;
     if (ch.carry && ch.carry.cooked) {
@@ -421,27 +474,30 @@ class KitchenGame {
       if (c) { this.deliver(ch, c); return; }
     }
     const o = this.L.objs.filter((q) => q.owner === ch.p && this.isNear(ch, q)).sort((a, b) => dist(ch, a) - dist(ch, b))[0];
-    if (o) this.useObject(ch, o);
+    if (o) this.useObject(ch, o, part);
     else this.chefSay(ch, '가까이 가서 눌러요!');
   }
 
-  useObject(ch, o) {
+  useObject(ch, o, part = 'one') {
     if (o.kind === 'box') {
-      if (ch.carry && ch.carry.cooked) { this.chefSay(ch, '구운 만두부터 배달해요!'); return; }
-      this.grab(ch, o, o.amount);
+      if (ch.carry && ch.carry.cooked) { this.chefSay(ch, '구운 음식부터 배달해요!'); return; }
+      if (ch.carry && ch.carry.dish !== o.dish) { this.chefSay(ch, `${DISHES[ch.carry.dish].name}랑 섞으면 안 돼요!`); return; }
+      this.grab(ch, o, part === 'pack' ? o.pack : 1);
     } else if (o.kind === 'stove') {
       if (o.state === 'empty') {
-        if (!ch.carry || ch.carry.cooked) { this.chefSay(ch, ch.carry ? '손이 꽉 찼어요' : '만두를 먼저 담아요'); return; }
+        if (!ch.carry || ch.carry.cooked) { this.chefSay(ch, ch.carry ? '손이 꽉 찼어요' : '재료를 먼저 담아요'); return; }
+        const d = DISHES[ch.carry.dish];
         o.state = 'cooking'; o.n = ch.carry.n; o.t = 0;
+        o.dish = ch.carry.dish; o.taps = ch.carry.taps; o.cookTime = d.cook;
         ch.carry = null;
         sfx.machine();
-        this.float(o.x, o.y - o.h / 2 - 10, '지글지글', '#ff9a3c', 26);
+        this.float(o.x, o.y - o.h / 2 - 10, d.sound, '#ff9a3c', 26);
       } else if (o.state === 'cooking') {
-        this.chefSay(ch, '지글지글 굽는 중!');
+        this.chefSay(ch, `${DISHES[o.dish].sound} 굽는 중!`);
       } else {
         if (ch.carry) { this.chefSay(ch, '손이 꽉 찼어요'); return; }
-        ch.carry = { n: o.n, cooked: true };
-        o.state = 'empty'; o.n = 0; o.t = 0;
+        ch.carry = { n: o.n, cooked: true, dish: o.dish, taps: o.taps };
+        o.state = 'empty'; o.n = 0; o.t = 0; o.dish = null;
         sfx.hop();
       }
     } else if (o.kind === 'trash') {
@@ -457,8 +513,10 @@ class KitchenGame {
     const holders = this.chefs.filter((ch) => ch.carry && ch.carry.cooked);
     const near = holders.filter((ch) => this.nearCustomer(ch, c));
     if (!near.length) {
-      // 주문을 읽어 주고, 접시를 든 요리사가 멀리 있으면 알려 준다
-      this.say(this.problemWords(c.p), true);
+      // 주문을 읽어 주고(그림 주문은 처음엔 그림 안내, 한 번 더 누르면 숫자로), 접시를 든 요리사가 멀리 있으면 알려 준다
+      const words = c.tokens && !c.helped ? this.pictureWords(c) : this.problemWords(c.p);
+      if (c.tokens) c.helped = true;
+      this.say(`${DISHES[c.dish].name}! ${words}`, true);
       c.shakeT = 0.3;
       if (holders.length) this.chefSay(holders[0], '손님 앞으로 가요!');
       else {
@@ -467,16 +525,17 @@ class KitchenGame {
       }
       return;
     }
-    const ch = near.find((h) => h.carry.n === c.p.answer) || near.sort((a, b) => Math.abs(a.x - c.x) - Math.abs(b.x - c.x))[0];
+    const ch = near.find((h) => h.carry.n === c.p.answer && h.carry.dish === c.dish) || near.sort((a, b) => Math.abs(a.x - c.x) - Math.abs(b.x - c.x))[0];
     this.deliver(ch, c);
   }
 
   grab(ch, o, n) {
-    if (!ch.carry) ch.carry = { n: 0, cooked: false };
+    if (!ch.carry) ch.carry = { n: 0, cooked: false, dish: o.dish, taps: 0 };
     if (ch.carry.cooked) return;
     const add = Math.min(n, CAP - ch.carry.n);
     if (add <= 0) { this.chefSay(ch, '20개까지만 들 수 있어요'); return; }
     ch.carry.n += add;
+    ch.carry.taps += 1;
     sfx.pop(Math.min(ch.carry.n, 12));
     this.float(o.x + (Math.random() - 0.5) * 30, o.y - o.h / 2, `+${add}`, '#ffd65c', 30);
   }
@@ -484,7 +543,19 @@ class KitchenGame {
   deliver(ch, c) {
     if (!ch.carry || !ch.carry.cooked) return;
     if (c.state !== 'wait') { this.chefSay(ch, '다른 손님에게 줘요'); return; }
-    const n = ch.carry.n;
+    const { n, dish, taps } = ch.carry;
+    if (dish !== c.dish) {
+      // 다른 음식 — 벌 없이 접시는 그대로
+      sfx.oops();
+      c.shakeT = 0.5;
+      c.mood = 'sad'; c.moodT = 1.2;
+      ch.mood = 'sad'; ch.moodT = 1;
+      this.combo = 0;
+      this.renderCombo();
+      this.float(c.x, c.y - 70, `${DISHES[c.dish].name} 주세요!`, '#ff8fab', 28);
+      this.say(`저는 ${DISHES[c.dish].name}를 주문했어요!`, true);
+      return;
+    }
     if (n !== c.p.answer) {
       // 벌 없음 — 접시는 그대로 들고 있고, 다른 손님에게 주거나 버리고 다시
       sfx.oops();
@@ -508,6 +579,15 @@ class KitchenGame {
     const fast = c.patience / c.patienceMax > 0.5;
     let coins = 2 + (fast ? 1 : 0) + (c.vip ? 3 : 0);
     if (this.fever > 0) coins *= 2;
+    // 척척 보너스: 묶음을 잘 써서 가장 적게 눌러 만들었을 때 — 더하기(13 = 10 + 3)도, 빼기(8 = 10 − 2)도
+    const best = fewestTaps(n, DISHES[dish].pack);
+    const smart = best < n && taps > 0 && taps <= best;
+    if (smart) {
+      coins += 1;
+      this.smart += 1;
+      this.float(ch.x, ch.y - this.L.chefH - 40, '척척! 🎯', '#7fdcae', 30);
+    }
+    this.dishServed[dish] = (this.dishServed[dish] || 0) + 1;
     if (this.combo > 0 && this.combo % FEVER_COMBO === 0) {
       this.fever = FEVER_TIME;
       this.banner('🔥 피버 타임! 코인 2배', 1.6);
@@ -518,7 +598,7 @@ class KitchenGame {
     this.renderCombo();
     this.addCoins(coins);
     this.float(c.x, c.y - 90, `+${coins}`, '#ffd23f', 40);
-    c.state = 'eat'; c.t = 0; c.mood = 'happy'; c.plateN = n;
+    c.state = 'eat'; c.t = 0; c.mood = 'happy'; c.plateN = n; c.plateDish = dish;
     this.say(pick(['딩동댕!', '맛있겠다!', '고마워요!', '냠냠!']), true);
   }
 
@@ -546,6 +626,37 @@ class KitchenGame {
     speak(text);
   }
 
+  // 그림 주문을 말로 (숫자는 말하지 않고 그림을 보게)
+  pictureWords(c) {
+    switch (c.p.mode) {
+      case 'add': return c.tokens[0].t === 'dice' ? '주사위 두 개를 더하면?' : '점을 모두 세어 봐요!';
+      case 'sub': return '지운 것을 빼면 몇 개?';
+      case 'ten': return '빈칸이 몇 개일까요?';
+      case 'mul': return '모두 몇 개일까요?';
+      case 'div': return '한 접시에 몇 개씩일까요?';
+      default: return this.problemWords(c.p);
+    }
+  }
+
+  // 주문 식: 글자 식은 늘 만들고, 가끔 그림 식(주사위 · 10칸 판 · 묶음 · 점과 접시)
+  orderTokens(p) {
+    const text = [{ t: 'text', s: p.left.trim() }, { t: 'q' }];
+    if (p.right.trim()) text.push({ t: 'text', s: p.right.trim() });
+    let pic = null;
+    if (Math.random() < (p.mode === 'ten' ? 0.5 : PIC_RATE)) {
+      const { a, b } = p;
+      const eq = [{ t: 'op', s: '=' }, { t: 'q' }];
+      if (p.mode === 'add') {
+        if (a <= 6 && b <= 6 && Math.random() < 0.6) pic = [{ t: 'dice', v: a }, { t: 'op', s: '+' }, { t: 'dice', v: b }, ...eq];
+        else if (a <= 10 && b <= 10) pic = [{ t: 'frame', v: a }, { t: 'op', s: '+' }, { t: 'frame', v: b }, ...eq];
+      } else if (p.mode === 'sub' && a <= 20) pic = [{ t: 'frame', v: a, cross: b }, ...eq];
+      else if (p.mode === 'ten') pic = [{ t: 'frame', v: a, empty: true }, { t: 'word', s: '빈칸' }, { t: 'q' }];
+      else if (p.mode === 'mul') pic = [{ t: 'groups', g: b, each: a }, ...eq];   // a 개씩 b 묶음
+      else if (p.mode === 'div') pic = [{ t: 'dots', v: a }, { t: 'op', s: '÷' }, { t: 'plates', v: b }, ...eq];
+    }
+    return { text, pic };
+  }
+
   problemWords(p) {
     if (p.mode === 'ten') return `${p.a} 더하기 몇은 10?`;
     return `${p.a} ${OP_WORD[p.mode]} ${p.b}는?`;
@@ -568,8 +679,9 @@ class KitchenGame {
     const p = this.nextProblem();
     if (!p) return false;
     if (!this.bag.length) this.bag = shuffle([...FEATURED_CUSTOMERS]);
+    const { text, pic } = this.orderTokens(p);
     const c = {
-      key: this.bag.pop(), seatIdx, p,
+      key: this.bag.pop(), seatIdx, p, dish: pick(this.dishes), tokens: pic, textTokens: text, helped: false, born: this.time,
       x: this.L.door.x, y: this.L.custY,
       state: 'walkin', t: 0, mood: 'walk', moodT: 0,
       patience: PATIENCE, patienceMax: PATIENCE, vip: Math.random() < VIP_RATE,
@@ -609,7 +721,7 @@ class KitchenGame {
         if (c.x >= seat.x) {
           c.x = seat.x; c.state = 'wait'; c.mood = 'idle'; c.bubbleT = 0;
           sfx.hop();
-          this.say(`${c.vip ? '귀한 손님! ' : ''}${this.problemWords(c.p)}`);
+          this.say(`${c.vip ? '귀한 손님! ' : ''}${DISHES[c.dish].name} 주세요! ${c.tokens ? this.pictureWords(c) : this.problemWords(c.p)}`);
         }
       } else if (c.state === 'wait') {
         c.bubbleT += dt;
@@ -713,12 +825,17 @@ class KitchenGame {
       drawCharacter(ctx, c.key, anim, t + c.phase, c.x, c.y, L.custH * (c.vip ? 1.06 : 1), c.state === 'leave');
     }
     D.drawCounter(ctx, W, L);
-    for (const c of custs) if (c.state === 'eat') D.drawPlate(ctx, c.x, L.counterY - 34, c.plateN);
-    // 말풍선 (맨 위)
+    for (const c of custs) if (c.state === 'eat') D.drawPlate(ctx, c.x, L.counterY - 34, c.plateN, c.plateDish);
+    // 말풍선 (맨 위). 세로 화면은 이웃 손님끼리 높낮이를 엇갈려서 말풍선을 두 배 넓게 (그림 주문이 크게 보이게)
     const seatGap = L.seats.length > 1 ? L.seats[1].x - L.seats[0].x : 300;
-    for (const c of custs) {
-      if (c.state === 'wait' || c.state === 'eat') c.bubble = D.drawOrder(ctx, c.x, c.y - L.custH - 6, seatGap - 12, c, t);
-      else c.bubble = null;
+    const stagger = PORTRAIT;
+    const high = (c) => stagger && c.seatIdx % 2 === 0;
+    for (const c of custs) c.bubble = null;
+    for (const c of [...custs.filter(high), ...custs.filter((q) => !high(q))]) {
+      if (c.state !== 'wait' && c.state !== 'eat') continue;
+      const lift = high(c) ? 98 : 0;
+      c.bubble = D.drawOrder(ctx, c.x, c.y - L.custH - 6 - lift, stagger ? seatGap * 2 - 40 : seatGap - 12, c, t,
+        stagger ? { tail: 14 + lift, minX: 8, maxX: W - 8, maxScale: 1.25 } : {});
     }
 
     if (this.players === 2 && this.state !== 'menu') D.drawDivider(ctx, W, H, L, PORTRAIT);
@@ -789,7 +906,10 @@ class KitchenGame {
       return free ? { obj: free, text: '주문만큼 담았으면 화덕으로!' } : null;
     }
     if (stoves.some((o) => o.state === 'cooking')) return null;
-    return { obj: mine.find((o) => o.kind === 'box' && o.amount === 1), text: '만두 상자로 가서 상자를 눌러요' };
+    // 가장 오래 기다린 손님의 음식 상자로
+    const first = this.customers.filter((q) => q.state === 'wait').sort((a, b) => a.born - b.born)[0];
+    const dish = first ? first.dish : this.dishes[0];
+    return { obj: mine.find((o) => o.kind === 'box' && o.dish === dish), text: `${DISHES[dish].name} 상자로 가서 눌러요` };
   }
 
   // 지금 가까이 있어서 '눌러서 쓸 수 있는' 것 (빛나고 이름표가 뜬다)
@@ -801,7 +921,7 @@ class KitchenGame {
     for (const o of this.L.objs) {
       if (o.owner !== ch.p || !this.isNear(ch, o)) continue;
       const raw = ch.carry && !ch.carry.cooked;
-      if (o.kind === 'box' && !(ch.carry && ch.carry.cooked)) return { obj: o, text: `눌러서 +${o.amount}` };
+      if (o.kind === 'box' && !(ch.carry && ch.carry.cooked)) return { obj: o, text: `눌러서 담기 (1 · ${o.pack})` };
       if (o.kind === 'stove' && o.state === 'empty' && raw) return { obj: o, text: '눌러서 굽기' };
       if (o.kind === 'stove' && o.state === 'done' && !ch.carry) return { obj: o, text: '눌러서 들기' };
       if (o.kind === 'trash' && ch.carry) return { obj: o, text: '눌러서 버리기' };
@@ -832,7 +952,25 @@ class KitchenGame {
       s.style.animationDelay = `${0.15 * i}s`;
       starBox.append(s);
     }
-    box.querySelector('.served-line').textContent = `만두 ${this.served}접시 배달 완료!`;
+    box.querySelector('.served-line').textContent = `음식 ${this.served}접시 배달 완료!`;
+    const parts = this.dishes.map((k) => `${DISHES[k].emoji} ${this.dishServed[k] || 0}`);
+    if (this.smart) parts.push(`척척 🎯 ${this.smart}`);
+    box.querySelector('.dish-line').textContent = parts.join(' · ');
+    // 새 레시피 열기 (지금까지 배달한 접시 수)
+    const before = store.load('kitchen.total', 0);
+    const total = before + this.served;
+    store.save('kitchen.total', total);
+    const newly = DISH_KEYS.filter((k) => DISHES[k].unlock > before && DISHES[k].unlock <= total);
+    const next = DISH_KEYS.find((k) => DISHES[k].unlock > total);
+    const unlock = box.querySelector('.unlock-line');
+    unlock.classList.toggle('new', newly.length > 0);
+    if (newly.length) {
+      unlock.textContent = `🎉 새 레시피! ${newly.map((k) => `${DISHES[k].emoji} ${DISHES[k].name}`).join(' · ')} — 다음 판부터 주문이 와요`;
+      const run = this.runId;
+      setTimeout(() => { if (run === this.runId) { sfx.fanfare(); speak(`새 레시피! ${newly.map((k) => DISHES[k].name).join(', ')}!`); } }, 900);
+    } else {
+      unlock.textContent = next ? `🔒 ${DISHES[next].emoji} ${DISHES[next].name}까지 ${DISHES[next].unlock - total}접시` : '';
+    }
     const team = box.querySelector('.team-line');
     team.hidden = this.players !== 2;
     team.textContent = this.players === 2 ? `${this.chefs.map((c) => `${c.name} ${c.served}접시`).join(' · ')} — 최고의 팀!` : '';
