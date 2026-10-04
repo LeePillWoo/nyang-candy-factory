@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=16">
-  <link rel="stylesheet" href="kitchen.css?v=16">
+  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="kitchen.css?v=20">
 </head>
 <body class="kitchen">
   <div id="stage">
@@ -29,6 +29,13 @@
     </div>
 
     <div id="banner" hidden></div>
+
+    <!-- 거스름돈: 손님이 낸 돈 − 음식값 -->
+    <div id="pay" hidden>
+      <p class="pay-q">🪙 <b class="pay-paid">10</b>코인 냈어요 · 음식은 <b class="pay-price">7</b>코인</p>
+      <p class="pay-ask">거스름돈은 얼마?</p>
+      <div class="pay-choices"></div>
+    </div>
 
     <!-- 시작 화면 -->
     <section id="menu" class="screen">
@@ -80,15 +87,19 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/audio.js": "./src/audio.js?v=16",
-      "./src/problems.js": "./src/problems.js?v=16",
-      "./src/viewport.js": "./src/viewport.js?v=16",
-      "./src/sprites.js": "./src/sprites.js?v=16",
-      "./src/characters.js": "./src/characters.js?v=16",
-      "./src/kitchen/draw.js": "./src/kitchen/draw.js?v=16"
+      "./src/audio.js": "./src/audio.js?v=20",
+      "./src/problems.js": "./src/problems.js?v=20",
+      "./src/viewport.js": "./src/viewport.js?v=20",
+      "./src/sprites.js": "./src/sprites.js?v=20",
+      "./src/characters.js": "./src/characters.js?v=20",
+      "./src/save.js": "./src/save.js?v=20",
+      "./src/learn.js": "./src/learn.js?v=20",
+      "./src/missions.js": "./src/missions.js?v=20",
+      "./src/shop.js": "./src/shop.js?v=20",
+      "./src/kitchen/draw.js": "./src/kitchen/draw.js?v=20"
     }
   }
   </script>
-  <script type="module" src="src/kitchen/game.js?v=16"></script>
+  <script type="module" src="src/kitchen/game.js?v=20"></script>
 </body>
 </html>

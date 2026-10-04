@@ -9,8 +9,8 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css?v=12">
-  <link rel="stylesheet" href="penguin.css?v=12">
+  <link rel="stylesheet" href="style.css?v=20">
+  <link rel="stylesheet" href="penguin.css?v=20">
 </head>
 <body class="penguin">
   <div id="stage">
@@ -69,6 +69,7 @@
         <div class="stars"></div>
         <p class="earned"></p>
         <div class="review"></div>
+        <button class="btn go next-step" hidden></button>
         <div class="row">
           <button class="btn go again">한 번 더!</button>
           <button class="btn go home">처음으로</button>
@@ -81,14 +82,18 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/audio.js": "./src/audio.js?v=12",
-      "./src/problems.js": "./src/problems.js?v=12",
-      "./src/viewport.js": "./src/viewport.js?v=12",
-      "./src/sprites.js": "./src/sprites.js?v=12",
-      "./src/penguin/draw.js": "./src/penguin/draw.js?v=12"
+      "./src/audio.js": "./src/audio.js?v=20",
+      "./src/problems.js": "./src/problems.js?v=20",
+      "./src/viewport.js": "./src/viewport.js?v=20",
+      "./src/sprites.js": "./src/sprites.js?v=20",
+      "./src/save.js": "./src/save.js?v=20",
+      "./src/learn.js": "./src/learn.js?v=20",
+      "./src/missions.js": "./src/missions.js?v=20",
+      "./src/shop.js": "./src/shop.js?v=20",
+      "./src/penguin/draw.js": "./src/penguin/draw.js?v=20"
     }
   }
   </script>
-  <script type="module" src="src/penguin/game.js?v=12"></script>
+  <script type="module" src="src/penguin/game.js?v=20"></script>
 </body>
 </html>

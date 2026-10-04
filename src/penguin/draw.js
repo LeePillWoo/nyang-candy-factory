@@ -211,10 +211,11 @@ export function drawFlag(ctx, p, text, laneIdx, alpha, state) {
 
 // ── 문제 간판 (깃발 세 개 위에 걸린 큰 판) ─────────────────
 // p = 가운데 길 바닥 위치, parts = [앞, 빈칸, 뒤] 글자, answer 가 있으면 빈칸에 정답을 초록으로
-export function drawQuizSign(ctx, p, parts, alpha, answer = null) {
+// 멀리서도 일찍 읽히도록 크게 (길 폭보다 넓은 간판). review = 전에 틀린 문제 → '다시 도전' 리본
+export function drawQuizSign(ctx, p, parts, alpha, answer = null, review = false) {
   const s = p.s;
-  const bw = s * 4.2, bh = s * 1.0;
-  const bottom = p.y - s * 1.24;
+  const bw = s * 6.2, bh = s * 1.5;
+  const bottom = p.y - s * 1.3;
   ctx.save();
   ctx.globalAlpha = alpha;
   ctx.lineWidth = Math.max(1.5, s * 0.02);
@@ -235,7 +236,17 @@ export function drawQuizSign(ctx, p, parts, alpha, answer = null) {
   const [left, , right] = parts;
   const mid = answer === null ? '?' : String(answer);
   const len = (left + mid + right).length;
-  const fs = Math.min(bh * 0.74, (bw * 0.92) / (len * 0.5));
+  const fs = Math.min(bh * 0.72, (bw * 0.92) / (len * 0.5));
+  if (review && fs > 6) {
+    const rs = fs * 0.42, rw = rs * 5.4, rh = rs * 1.5;
+    const rx = p.x - bw / 2 + s * 0.2, ry = bottom - bh - rh * 0.6;
+    ctx.fillStyle = '#ffd65c';
+    rr(ctx, rx, ry, rw, rh, rh * 0.4); ctx.fill(); ctx.stroke();
+    ctx.fillStyle = OUTLINE;
+    ctx.font = `${rs}px Jua, sans-serif`;
+    ctx.textBaseline = 'middle'; ctx.textAlign = 'center';
+    ctx.fillText('🔁 다시 도전', rx + rw / 2, ry + rh / 2 + rs * 0.05);
+  }
   if (fs > 3) {
     ctx.font = `${fs}px Jua, sans-serif`;
     ctx.textBaseline = 'middle';

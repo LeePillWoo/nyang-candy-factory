@@ -1,10 +1,12 @@
 // WebAudio 효과음 (파일 없이 합성) + 한국어 음성 안내(speechSynthesis).
+import { load, save } from './save.js';
+
 let ctx = null;
 let master = null;
 let muted = false;
 let speechPrimed = false;
 
-try { muted = localStorage.getItem('nyang.muted') === '1'; } catch { /* 저장소 없음 */ }
+muted = load('nyang.muted', 0) === 1;   // 소리 끔 설정 (세 게임 공용)
 
 // 모바일 브라우저는 첫 터치 때 오디오를 깨워야 한다.
 export function unlockAudio() {
@@ -27,7 +29,7 @@ export function unlockAudio() {
 export function isMuted() { return muted; }
 export function setMuted(m) {
   muted = m;
-  try { localStorage.setItem('nyang.muted', m ? '1' : '0'); } catch { /* 무시 */ }
+  save('nyang.muted', m ? 1 : 0);
   if (m && window.speechSynthesis) speechSynthesis.cancel();
 }
 
