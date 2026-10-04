@@ -120,7 +120,7 @@ candy.html            냥냥 사탕 공장 화면 뼈대 (HUD, 주문서, 답 �
 penguin.html          펭귄 남극탐험 화면 뼈대 (문제판, 조작 버튼, 메뉴/결과 화면)
 style.css             두꺼운 외곽선의 스티커 느낌 UI (두 게임 공용)
 penguin.css           펭귄 게임용 얼음 색·문제판·조작 버튼
-kitchen.html          냥냥 주방 화면 뼈대 (HUD, 주문서 줄, 요리사 자리, 메뉴/결과)
+kitchen.html          냥냥 주방 화면 뼈대 (canvas 장면, HUD, 메뉴/결과)
 kitchen.css           냥냥 주방 메뉴·HUD 색 (장면은 canvas)
 src/
   sprites.js          SPRITES: 스프라이트 시트 메타 + 로더 + 프레임 그리기
