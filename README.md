@@ -55,7 +55,7 @@ python tools/build_single.py kitchen.html    # → dist/kitchen.html
 
 ### GitHub Pages 배포 시 버전 올리기
 
-GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `index.html`·`candy.html`·`penguin.html`·`kitchen.html` 안의 `?v=21` 을 **모두** 다음 숫자(`?v=22`)로 바꿔 주세요(CSS, 시작 스크립트, importmap 안의 모듈들). 새 모듈을 만들면 그 모듈을 쓰는 페이지의 importmap 에도 추가합니다.
+GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 올릴 때는 `index.html`·`candy.html`·`penguin.html`·`kitchen.html` 안의 `?v=22` 를 **모두** 다음 숫자(`?v=23`)로 바꿔 주세요(CSS, 시작 스크립트, importmap 안의 모듈들). 새 모듈을 만들면 그 모듈을 쓰는 페이지의 importmap 에도 추가합니다.
 그래야 폰에서 예전 파일과 새 파일이 섞이지 않고 한꺼번에 새로 받아집니다. (스프라이트 그림은 `src/sprites.js` 의 `SPRITE_VERSION`(지금 9) 과 `index.html` CSS 의 `?v=9` 를 따로 올려요.)
 
 기기에서 화면이 잘리거나 너무 크게 보이면 주소 끝에 `?debug` 를 붙여 열어 보세요(예: `.../nyang-candy-factory/candy.html?debug`). 사탕 공장은 화면 왼쪽 아래에 브라우저가 알려 주는 화면 크기와 실제로 쓴 크기가 표시됩니다. (`?debug` 는 자동 테스트용으로 `window.__game` 도 열어 줘요.)
@@ -120,7 +120,9 @@ GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 
 요리사를 **조이스틱**으로 움직여 주방을 뛰어다니며 음식을 굽고 배달하는 게임(오버쿡드 느낌). 한 판은 영업 시간 2분 30초.
 
 - **조이스틱**: 화면 아무 곳이나 꾹 누르면 그 자리에 조이스틱이 생기고, 민 쪽으로 요리사가 걸어요(많이 밀수록 빨리). 손을 떼면 사라져요. 물건 몸통은 지나갈 수 없어서 돌아가야 해요.
-- **누르기**: 물건·손님은 요리사가 **가까이 있을 때만** 짧게 눌러서 써요. 가까워지면 물건이 빛나고 `눌러서 담기`, `눌러서 굽기` 같은 이름표가 떠요. 멀리서 누르면 "가까이 가서 눌러요!".
+- **누르기**: 물건·손님은 요리사가 **가까이 있을 때만** 짧게 눌러서 써요. 가까워지면 물건이 빛나고 요리사 머리 위에 `눌러서 담기 (1 · 5)`, `눌러서 굽기` 같은 이름표가 떠요. 멀리서 누르면 "가까이 가서 눌러요!".
+  - **재료 상자는 한 걸음 떨어져서도** 눌러져요(`BOX_REACH` 150px, 다른 물건은 `NEAR` 64px). 상자 앞(벽 반대쪽)은 요리사가 들어가지 못하게 조금 비워 둬서(`makeLayout()` 의 `boxZones`), 옆에서 다가와도 고양이가 **1 · 묶음 단추를 가리지 않아요**.
+  - 1 · 묶음 단추는 언제나 요리사 · 쟁반 · 이름표보다 위에 그려지고, 쟁반과 겹쳐도 단추가 먼저 눌려요. 이름표는 상자 줄을 비켜서 방 가운데 쪽에 떠요.
 - PC 키보드: 1P = WASD + 스페이스(누르기) / Q(묶음), 2P = 방향키 + 엔터 / `/`(묶음) (혼자면 방향키도 1P).
 
 ### 레시피 — 음식마다 '묶음'이 달라서 수를 만드는 방법이 달라요
@@ -166,7 +168,7 @@ GitHub Pages는 파일을 최대 10분 동안 캐시합니다. 바뀐 내용을 
 
 **둘이 하기**: 주방을 반으로 나눠 왼쪽 1P 냥이, 오른쪽 2P 펭귄(각자 재료 상자·화덕 2개·버리기). 화면 **왼쪽 절반을 누르면 1P, 오른쪽 절반을 누르면 2P 조이스틱**이고, 두 손가락(두 사람)이 동시에 움직일 수 있어요. 손님은 함께 받아요 — 손님 앞에 있는, 구운 접시를 든 요리사가 배달합니다.
 
-별: 혼자 3·5·8접시, 둘이 4·7·10접시. 숫자들은 `src/kitchen/game.js` 맨 위(`DISHES`, `SHIFT`, `CHEF_SPEED`, `STICK_R`, `NEAR`, `SEATS`, `STAR_AT`, `FEVER_COMBO`, `VIP_RATE`, `PIC_RATE`, `PARTY_AT`, `BOSS_AT`, `CHANGE_RATE`, `REVIEWS_PER_SHIFT` …), 배치는 `makeLayout()`, 그림은 `src/kitchen/draw.js`.
+별: 혼자 3·5·8접시, 둘이 4·7·10접시. 숫자들은 `src/kitchen/game.js` 맨 위(`DISHES`, `SHIFT`, `CHEF_SPEED`, `STICK_R`, `NEAR`, `BOX_REACH`, `SEATS`, `STAR_AT`, `FEVER_COMBO`, `VIP_RATE`, `PIC_RATE`, `PARTY_AT`, `BOSS_AT`, `CHANGE_RATE`, `REVIEWS_PER_SHIFT` …), 배치는 `makeLayout()`, 그림은 `src/kitchen/draw.js`.
 
 ## 폴더 구조
 

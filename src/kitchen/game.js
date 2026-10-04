@@ -43,6 +43,7 @@ const CHEF_SPEED = 470;       // 요리사 걷는 빠르기 (조이스틱 끝까
 const STICK_R = 70;           // 조이스틱 반지름
 const STICK_DEAD = 14;        // 이만큼 밀어야 걷기 시작 (그보다 짧게 누르면 '누르기')
 const NEAR = 64;              // 물건과 이만큼 가까워야 눌러서 쓸 수 있다
+const BOX_REACH = 150;        // 재료 상자는 더 멀리서도 — 조금 떨어져 서서 1 · 묶음 칸이 다 보이게
 const CUST_SPEED = 300;       // 손님 걷는 빠르기
 const SEATS = { 1: 3, 2: 4 }; // 계산대 자리 수
 const STAR_AT = { 1: [3, 5, 8], 2: [4, 7, 10] };
@@ -76,7 +77,6 @@ function fewestTaps(n, pack) {
 const $ = (s) => document.querySelector(s);
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
 const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
-const dist = (a, b) => Math.hypot(a.x - b.x, a.y - b.y);
 const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 
 const store = { load, save };   // 기기 저장소 (save.js)
@@ -134,6 +134,32 @@ function drawCharacter(ctx, key, animName, t, x, y, h, flip = false, hat = null)
 // ── 무대 크기 ─────────────────────────────────────────
 let W = 1280, H = 800, PORTRAIT = false;
 
+// 요리사(발 위치 pt)를 바닥 안 · 물건 밖으로 밀어낸다. 재료 상자 줄은 앞(열린 쪽) · 위 · 아래로만 나간다.
+function blockOut(L, pt) {
+  const minX = 36, maxX = W - 36, minY = L.minY, maxY = H - 24;
+  pt.x = clamp(pt.x, minX, maxX);
+  pt.y = clamp(pt.y, minY, maxY);
+  // 사각형 밖으로 가장 가까운 쪽으로 — 바닥 밖으로 나가는 쪽(벽 · 화면 끝)은 고르지 않는다
+  const pushOut = (x0, x1, y0, y1) => {
+    const ways = [[pt.x - x0, 'l', x0 >= minX], [x1 - pt.x, 'r', x1 <= maxX], [pt.y - y0, 'u', y0 >= minY], [y1 - pt.y, 'd', y1 <= maxY]]
+      .filter((w) => w[2]).sort((a, b) => a[0] - b[0]);
+    const way = ways.length ? ways[0][1] : null;
+    if (way === 'l') pt.x = x0; else if (way === 'r') pt.x = x1; else if (way === 'u') pt.y = y0; else if (way === 'd') pt.y = y1;
+  };
+  // 재료 상자 구역: 벽까지 이어져 있어서 앞(열린 쪽) · 위 · 아래로만 나간다
+  for (const z of L.boxZones || []) {
+    if ((z.left ? pt.x >= z.x : pt.x <= z.x) || pt.y <= z.y0 || pt.y >= z.y1) continue;
+    if (z.left) pushOut(-Infinity, z.x, z.y0, z.y1); else pushOut(z.x, Infinity, z.y0, z.y1);
+  }
+  for (const o of L.objs) {
+    if (o.kind === 'box') continue;   // 상자는 위의 구역으로
+    const x0 = o.x - o.w / 2 + 4, x1 = o.x + o.w / 2 - 4;
+    const y0 = o.y - o.h / 2 + 34, y1 = o.y + o.h / 2 + 8;
+    if (pt.x <= x0 || pt.x >= x1 || pt.y <= y0 || pt.y >= y1) continue;
+    pushOut(x0, x1, y0, y1);
+  }
+}
+
 // 주방 배치: 계산대 높이, 손님 자리, 요리사별 재료 상자(오늘 메뉴마다 하나)·화덕·버리기 위치
 function makeLayout(players, portrait, dishes = ['mandu']) {
   // 세로 화면은 키가 클수록 손님 홀도 크게
@@ -177,18 +203,43 @@ function makeLayout(players, portrait, dishes = ['mandu']) {
       mine = [...boxesAt(82), stove(262, fy(0.0)), stove(262, fy(0.55)), trash(262, fy(0.97))];
       starts.push({ x: 170, y: fy(0.95) }, { x: W - 170, y: fy(0.95) });
     } else {
-      mine = [...boxesAt(82), stove(275, fy(0.05)), stove(455, fy(0.05)), trash(575, fy(0.75))];
+      mine = [...boxesAt(82), stove(330, fy(0.05)), stove(510, fy(0.05)), trash(575, fy(0.75))];   // 상자 앞 비켜설 자리만큼 화덕을 오른쪽으로
       starts.push({ x: 330, y: fy(0.9) }, { x: W - 330, y: fy(0.9) });
     }
     mine.forEach((o) => { o.owner = 0; objs.push(o); });
     mine.forEach((o) => objs.push(mirror(o)));
   }
-  // 요리사가 서서 일하는 자리: 물건 바로 뒤 (화덕 뒤에 선 요리사처럼 물건이 다리를 가린다)
-  objs.forEach((o) => { o.use = { x: o.x, y: o.y - o.h / 2 + 26 }; });
   L.objs = objs;
-  L.starts = starts;
   L.deliverY = L.counterY + 140;   // 배달할 때 서는 곳 (계산대 앞)
   L.minY = L.counterY + 120;
+  // 재료 상자 앞(벽 반대쪽)은 조금 비워 둔다 — 옆에서 다가와도 요리사 몸이 상자의 1 · 묶음 칸을 가리지 않게.
+  // 상자는 조금 떨어져서도 누를 수 있다(BOX_REACH). 벽 쪽 틈까지 막고, 상자끼리 붙어 있으면(가로 화면) 한 구역으로 합쳐
+  // 상자 사이 틈에 끼어 윗상자를 가리지 않게. 사이가 넓으면(세로 화면) 그 사이로 걸어 다닐 수 있게 둔다.
+  const gapX = L.boxGapX = Math.round(L.chefH * 0.34);
+  L.boxZones = [];
+  for (const p of [0, 1]) {
+    for (const o of objs.filter((q) => q.kind === 'box' && q.owner === p).sort((a, b) => a.y - b.y)) {
+      const left = o.x < W / 2;
+      const z = { p, left, x: left ? o.x + o.w / 2 + gapX : o.x - o.w / 2 - gapX, y0: o.y - o.h / 2 + 34, y1: o.y + o.h / 2 + 8 };
+      const prev = L.boxZones[L.boxZones.length - 1];
+      if (prev && prev.p === p && z.y0 - prev.y1 < 70) prev.y1 = z.y1;
+      else L.boxZones.push(z);
+    }
+  }
+  // 맨 아랫상자 밑 · 맨 윗상자 뒤에 좁은 틈만 남으면 끝까지 막는다
+  // (밑에 서면 아랫상자를 다 가리고, 뒤의 좁은 틈은 화덕 · 계산대 사이에 갇히는 막다른 곳이라서)
+  for (const z of L.boxZones) {
+    if (H - 24 - z.y1 < 60) z.y1 = H;
+    if (z.y0 - L.minY < 40) z.y0 = L.minY - 1;
+    // 옆 물건(화덕 · 버리기)과 사이가 좁은 배치(세로 2인)에서는 지나갈 길(30px)은 남긴다 — 단추는 늘 위에 그려지니 괜찮다
+    for (const o of objs) {
+      if (o.kind === 'box' || o.y + o.h / 2 + 8 <= z.y0 || o.y - o.h / 2 + 34 >= z.y1) continue;
+      if (z.left) z.x = Math.min(z.x, Math.max(z.x - gapX, o.x - o.w / 2 + 4 - 30));
+      else z.x = Math.max(z.x, Math.min(z.x + gapX, o.x + o.w / 2 - 4 + 30));
+    }
+  }
+  starts.forEach((st) => blockOut(L, st));   // 시작 자리도 물건 · 상자 구역 밖으로
+  L.starts = starts;
   return L;
 }
 
@@ -452,6 +503,17 @@ class KitchenGame {
   // ── 누르기 (요리사가 가까이 있을 때만) ─────────────────
   tap(x, y) {
     if (this.state !== 'play') return;
+    // 0) 재료 상자의 1 · 묶음 단추 (쟁반이나 요리사와 겹쳐도 단추가 먼저)
+    for (const o of this.L.objs) {
+      if (o.kind !== 'box') continue;
+      const hit = D.boxLabelRects(o).find((r) => x > r.x - 8 && x < r.x + r.w + 8 && y > r.y - 8 && y < r.y + r.h + 8);
+      if (!hit) continue;
+      const ch = this.chefs[o.owner];
+      if (!ch) return;
+      if (this.isNear(ch, o)) this.useObject(ch, o, hit.part);
+      else { this.chefSay(ch, '가까이 가서 눌러요!'); o.pingT = 1.2; }
+      return;
+    }
     // 1) 요리사가 든 쟁반 (생만두를 하나 내려놓기 — 너무 많이 집었을 때)
     for (const ch of this.chefs) {
       const r = ch.carry && !ch.carry.cooked && ch.trayRect;
@@ -488,15 +550,19 @@ class KitchenGame {
   }
 
   // 요리사 발 ↔ 물건 사각형 거리
-  isNear(ch, o) {
+  gapTo(ch, o) {
     const dx = Math.max(Math.abs(ch.x - o.x) - o.w / 2, 0);
     const dy = Math.max(Math.abs(ch.y - o.y) - o.h / 2, 0);
-    return Math.hypot(dx, dy) < NEAR;
+    return Math.hypot(dx, dy);
+  }
+
+  isNear(ch, o) {
+    return this.gapTo(ch, o) < (o.kind === 'box' ? BOX_REACH : NEAR);
   }
 
   // 손님 앞 (계산대 가까이, 좌우로 손님 근처)
   nearCustomer(ch, c) {
-    return Math.abs(ch.x - c.x) < 120 && ch.y < this.L.counterY + 260;
+    return Math.abs(ch.x - c.x) < 130 && ch.y < this.L.counterY + 290;
   }
 
   // 키보드 '누르기': 가까운 손님(구운 접시를 들었을 때) → 가까운 물건
@@ -507,7 +573,7 @@ class KitchenGame {
       const c = this.customers.filter((q) => q.state === 'wait' && this.nearCustomer(ch, q)).sort((a, b) => Math.abs(a.x - ch.x) - Math.abs(b.x - ch.x))[0];
       if (c) { this.deliver(ch, c); return; }
     }
-    const o = this.L.objs.filter((q) => q.owner === ch.p && this.isNear(ch, q)).sort((a, b) => dist(ch, a) - dist(ch, b))[0];
+    const o = this.L.objs.filter((q) => q.owner === ch.p && this.isNear(ch, q)).sort((a, b) => this.gapTo(ch, a) - this.gapTo(ch, b))[0];
     if (o) this.useObject(ch, o, part);
     else this.chefSay(ch, '가까이 가서 눌러요!');
   }
@@ -1019,16 +1085,7 @@ class KitchenGame {
 
   // 물건 몸통(발 닿는 부분)은 지나갈 수 없다 — 물건 뒤로는 돌아가서
   collide(ch) {
-    const L = this.L;
-    ch.x = clamp(ch.x, 36, W - 36);
-    ch.y = clamp(ch.y, L.minY, H - 24);
-    for (const o of L.objs) {
-      const x0 = o.x - o.w / 2 + 4, x1 = o.x + o.w / 2 - 4;
-      const y0 = o.y - o.h / 2 + 34, y1 = o.y + o.h / 2 + 8;
-      if (ch.x <= x0 || ch.x >= x1 || ch.y <= y0 || ch.y >= y1) continue;
-      const push = [[ch.x - x0, 'l'], [x1 - ch.x, 'r'], [ch.y - y0, 'u'], [y1 - ch.y, 'd']].sort((a, b) => a[0] - b[0])[0][1];
-      if (push === 'l') ch.x = x0; else if (push === 'r') ch.x = x1; else if (push === 'u') ch.y = y0; else ch.y = y1;
-    }
+    blockOut(this.L, ch);
   }
 
   renderClock() {
@@ -1112,23 +1169,44 @@ class KitchenGame {
     }
     const chefs = this.chefs;
     if (this.players === 2) for (const ch of chefs) D.drawTag(ctx, ch.x, ch.y - L.chefH + 4, `${ch.p + 1}P`, ch.ring, 18);
+    // 요리사 머리 위 글자: 상자 줄과 겹치면 방 가운데 쪽으로 비켜서 (1 · 묶음 단추를 가리지 않게)
+    const headTag = (ch, text, fill, size = 22, bob = 0) => {
+      const y = ch.y - L.chefH - (ch.carry ? 110 : 16) + bob;
+      const half = D.tagWidth(ctx, text, size) / 2;
+      let x = ch.x;
+      for (const z of L.boxZones) {
+        const edge = z.left ? z.x - L.boxGapX + 8 : z.x + L.boxGapX - 8;   // 상자 바깥 끝
+        if (y < z.y0 - 34 - 60 || y - size - 16 > z.y1) continue;           // 높이가 안 겹치면 그대로
+        x = z.left ? Math.max(x, edge + half) : Math.min(x, edge - half);
+      }
+      D.drawTag(ctx, x, y, text, fill, size);
+    };
     for (const ch of chefs) {
       ch.trayRect = ch.carry ? D.drawCarry(ctx, ch.x, ch.y - L.chefH - 8, ch.carry, t) : null;
-      if (ch.sayT > 0) D.drawTag(ctx, ch.x, ch.y - L.chefH - (ch.carry ? 110 : 16), ch.say, '#fff', 22);
+      if (ch.sayT > 0) headTag(ch, ch.say, '#fff');
     }
 
     // 처음 몇 번은 다음에 갈 곳 안내 (가까이 와서 누를 수 있으면 그 이름표가 대신)
     hints.forEach((h, i) => {
       if (!h) return;
       const ch = this.chefs[i];
-      if (h.obj && !(prompts[i] && prompts[i].obj === h.obj)) D.drawFinger(ctx, h.obj.x, h.obj.y - h.obj.h / 2 - 14, t + i);
-      if (h.text && ch.sayT <= 0 && !prompts[i]) D.drawTag(ctx, ch.x, ch.y - L.chefH - (ch.carry ? 110 : 16), h.text, '#fff3c4', 20);
+      if (h.obj && !(prompts[i] && prompts[i].obj === h.obj)) {
+        const o = h.obj;
+        // 상자는 옆(벽 반대쪽)에서 가리킨다 — 위에서 가리키면 윗상자의 1 · 묶음 칸을 가려서
+        if (o.kind === 'box') D.drawFinger(ctx, o.x + (o.x < W / 2 ? 1 : -1) * (o.w / 2 + 34), o.y + 6, t + i, o.x < W / 2 ? 'left' : 'right');
+        else D.drawFinger(ctx, o.x, o.y - o.h / 2 - 14, t + i);
+      }
+      if (h.text && ch.sayT <= 0 && !prompts[i]) headTag(ch, h.text, '#fff3c4', 20);
     });
     prompts.forEach((pr, i) => {
       if (!pr) return;
-      if (pr.obj) D.drawTag(ctx, pr.obj.x, pr.obj.y - pr.obj.h / 2 - 2 + Math.sin(t * 6) * 3, pr.text, '#ffe08a', 22);
+      const ch = this.chefs[i];
+      // 물건 이름표는 요리사 머리 위에 (물건은 반짝이로 표시) — 상자 칸을 가리지 않게
+      if (pr.obj && ch.sayT <= 0) headTag(ch, pr.text, '#ffe08a', 22, Math.sin(t * 6) * 3);
       else if (pr.cust && pr.cust.bubble) D.drawTag(ctx, pr.cust.x, pr.cust.y - 40, pr.text, '#ffe08a', 22);
     });
+    // 재료 상자의 1 · 묶음 단추는 맨 위에 (요리사 · 쟁반 · 이름표에 가리지 않게)
+    for (const o of L.objs) if (o.kind === 'box') D.drawBoxLabels(ctx, o);
 
     for (const f of this.floats) D.drawFloat(ctx, f);
 
@@ -1165,8 +1243,8 @@ class KitchenGame {
       const c = this.customers.find((q) => q.state === 'wait' && this.nearCustomer(ch, q));
       if (c) return { cust: c, text: '손님을 눌러 배달!' };
     }
-    for (const o of this.L.objs) {
-      if (o.owner !== ch.p || !this.isNear(ch, o)) continue;
+    const near = this.L.objs.filter((o) => o.owner === ch.p && this.isNear(ch, o)).sort((a, b) => this.gapTo(ch, a) - this.gapTo(ch, b));
+    for (const o of near) {
       const raw = ch.carry && !ch.carry.cooked;
       if (o.kind === 'box' && !(ch.carry && ch.carry.cooked)) return { obj: o, text: `눌러서 담기 (1 · ${o.pack})` };
       if (o.kind === 'stove' && o.state === 'empty' && raw) return { obj: o, text: '눌러서 굽기' };

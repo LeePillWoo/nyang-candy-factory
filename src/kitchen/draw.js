@@ -242,16 +242,26 @@ export function drawBox(ctx, o, t, glow) {
     drawPortion(ctx, 'mandu', 0, 0, 5, Math.min(15, (w / 2 - 10) / 5), false);
     ctx.restore();
   }
-  // 칸 이름표: 1 · 묶음 수
-  for (const [cx, label] of [[lx, '1'], [rx, String(o.pack)]]) {
-    const lw = 46, lh = 34;
+}
+
+// 칸 이름표(1 · 묶음 수) 자리 — 누르는 단추라서 요리사 · 쟁반보다 위에 그리고, 누를 때도 먼저 본다
+export function boxLabelRects(o) {
+  const lw = 46, lh = 34, y = o.y + o.h / 2 - lh - 8;
+  return [
+    { part: 'one', label: '1', x: o.x - o.w / 4 - lw / 2, y, w: lw, h: lh },
+    { part: 'pack', label: String(o.pack), x: o.x + o.w / 4 - lw / 2, y, w: lw, h: lh },
+  ];
+}
+
+export function drawBoxLabels(ctx, o) {
+  for (const r of boxLabelRects(o)) {
     ctx.fillStyle = '#fff';
-    rr(ctx, cx - lw / 2, y + h / 2 - lh - 8, lw, lh, 10); ctx.fill();
+    rr(ctx, r.x, r.y, r.w, r.h, 10); ctx.fill();
     line(ctx, 3.5); ctx.stroke();
     ctx.fillStyle = OUTLINE;
     ctx.font = `28px ${FONT}`;
     ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-    ctx.fillText(label, cx, y + h / 2 - lh / 2 - 7);
+    ctx.fillText(r.label, r.x + r.w / 2, r.y + r.h / 2 + 1);
   }
 }
 
@@ -602,11 +612,19 @@ export function drawFootRing(ctx, x, y, color) {
 }
 
 // 다음에 누를 곳을 가리키는 손가락
-export function drawFinger(ctx, x, y, t) {
+// dir: 'down' = 위에서 아래로 가리킴(👇), 'left' = 오른쪽에서 왼쪽 물건을(👈), 'right' = 👉
+export function drawFinger(ctx, x, y, t, dir = 'down') {
   const b = Math.sin(t * 6) * 8;
   ctx.font = '46px sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText('👇', x, y - 24 + b);
+  if (dir === 'left') ctx.fillText('👈', x + 24 + b, y);
+  else if (dir === 'right') ctx.fillText('👉', x - 24 - b, y);
+  else ctx.fillText('👇', x, y - 24 + b);
+}
+
+export function tagWidth(ctx, text, size = 22) {
+  ctx.font = `${size}px ${FONT}`;
+  return ctx.measureText(text).width + 24;
 }
 
 // 요리사 머리 위 안내 / 떠오르는 글자
