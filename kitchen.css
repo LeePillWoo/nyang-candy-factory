@@ -60,6 +60,7 @@ body.kitchen #menu .panel { margin-left: 0; padding: 18px 30px 26px; }
 #served { font-size: 28px; padding: 0 16px 0 10px; }
 #combo[hidden] + #served { margin-left: auto; }
 body.kitchen #coins { margin-left: 0; }
+body.kitchen #served[hidden] + #coins { margin-left: auto; }   /* 메뉴 화면: 코인은 오른쪽 */
 
 #banner {
   position: absolute; left: 0; right: 0; top: 40%;
@@ -74,6 +75,27 @@ body.kitchen #coins { margin-left: 0; }
 .served-line { font-size: 36px; margin: 6px 0 0; }
 .team-line { font-size: 26px; margin: 4px 0 0; color: #8a6f66; }
 .best-line { font-size: 24px; margin: 4px 0 0; color: #e0701a; }
+.dish-line { font-size: 26px; margin: 2px 0 0; }
+.unlock-line { font-size: 22px; margin: 6px 0 0; color: #8a6f66; }
+.unlock-line:empty { display: none; }
+.unlock-line.new {
+  font-size: 26px; color: var(--ink);
+  background: #ffe08a; border: 4px solid var(--ink); border-radius: 18px;
+  padding: 6px 14px; display: inline-block;
+  animation: popin .5s .6s cubic-bezier(.3, 1.6, .5, 1) backwards;
+}
+
+/* 오늘의 메뉴 (잠긴 레시피는 남은 접시 수) */
+.dishes { display: flex; gap: 10px; justify-content: center; margin: 0 0 12px; }
+.dish {
+  display: flex; align-items: center; gap: 6px;
+  background: #fff; border: 4px solid var(--ink); border-radius: 16px;
+  padding: 2px 12px 2px 8px; font-size: 22px; white-space: nowrap;
+}
+.dish b { font-size: 28px; font-weight: normal; }
+.dish small { font-size: 15px; color: #8a6f66; }
+.dish.locked { background: #eee6e0; color: #9c8b82; }
+.dish.locked b { filter: grayscale(1); opacity: .6; }
 
 /* 세로 화면 */
 #stage.portrait #clock { top: 64px; }
