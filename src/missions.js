@@ -28,7 +28,7 @@ const CATALOG = {
   gugudan: [
     { id: 'gugudan.pond', icon: '🐸', text: '징검다리 연못 하나 건너기', goal: 1 },
     { id: 'gugudan.nosplash', icon: '🐸', text: '퐁당 없이 연못 건너기', goal: 1 },
-    { id: 'gugudan.mole', icon: '🔨', text: '두더지 6마리 잡기', goal: 6 },
+    { id: 'gugudan.mole', icon: '🔨', text: '두더지 10마리 잡기', goal: 10 },
     { id: 'gugudan.first', icon: '✖️', text: '구구단 한 번에 맞히기 8번', goal: 8 },
   ],
 };
