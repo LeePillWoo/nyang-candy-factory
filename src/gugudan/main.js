@@ -1,6 +1,6 @@
 // 냥냥 구구단 — 단(2~9단)을 고르고 🐸 징검다리 점프 · 🔨 두더지 잡기로 구구단을 익힌다.
-//   로비: 단 여러 개 고르기(+모두), 단계(쉬움 · 보통 · 어려움), 게임 고르기, 📒 익힘판
-//   징검다리 = 뛰어 세기(순서대로), 두더지 = 바로 떠올리기(무작위, 한 판 6문제)
+//   로비: 단 고르기(한 단 또는 모두), 단계(쉬움 · 보통 · 어려움), 게임 고르기, 📒 익힘판
+//   징검다리 = 뛰어 세기(순서대로), 두더지 = 바로 떠올리기(무작위, 한 판 10문제)
 //   문제마다 배움 기록(다시 도전 · 정답률)과 익힘판(한 번에 3번 연속이면 ⭐)에 남긴다.
 import { sfx, speak, unlockAudio, isMuted, setMuted } from '../audio.js';
 import { load, save, getCoins, addCoins as addToWallet } from '../save.js';
@@ -9,7 +9,7 @@ import { track } from '../missions.js';
 import { equippedHat } from '../shop.js';
 import { visibleArea, safeInsets, onViewportChange } from '../viewport.js';
 import { loadSprites } from '../sprites.js';
-import { DANS, masteryTable, markFact, problemOf, chant, pickFacts, shuffle, getBest, setBest } from './facts.js';
+import { DANS, masteryTable, markFact, problemOf, chant, pickFacts, getBest, setBest } from './facts.js';
 import { StonesGame } from './stones.js';
 import { MolesGame, QUESTIONS } from './moles.js';
 import * as D from './draw.js';
@@ -32,9 +32,11 @@ class App {
     this.lastSpeak = -9;
     this.coins = getCoins();
     this.hat = equippedHat();
+    // 고른 단: 한 단만, 또는 '모두'(2~9단 전부)
     const saved = load('gugudan.dans', [2]);
-    this.dans = Array.isArray(saved) ? saved.filter((d) => DANS.includes(d)) : [2];
-    if (!this.dans.length) this.dans = [2];
+    const ok = Array.isArray(saved) ? saved.filter((d) => DANS.includes(d)) : [];
+    this.oneDan = ok.length && ok.length < DANS.length ? ok[0] : 2;   // 한 단 고르기에서 마지막으로 고른 단
+    this.dans = ok.length === DANS.length ? [...DANS] : [this.oneDan];
     this.level = [1, 2, 3].includes(load('gugudan.level', 1)) ? load('gugudan.level', 1) : 1;
     this.state = 'lobby';
     this.game = null;
@@ -93,7 +95,7 @@ class App {
       const r = this.canvas.getBoundingClientRect();
       this.game.tap((e.clientX - r.left) / r.width * this.W, (e.clientY - r.top) / r.height * this.H);
     });
-    // 단 고르기
+    // 단 고르기: 한 단만 (다른 단을 누르면 그 단으로 바뀜) · '모두'는 2~9단 전부, 한 번 더 누르면 하던 한 단으로
     const box = $('#lobby .dans');
     box.innerHTML = DANS.map((d) => `<button class="dan" data-dan="${d}" aria-pressed="false"><span>${d}단</span><span class="ds"></span></button>`).join('')
       + '<button class="dan all" data-dan="all" aria-pressed="false">모두 (2~9단)</button>';
@@ -102,11 +104,11 @@ class App {
       if (!b) return;
       sfx.tap();
       if (b.dataset.dan === 'all') {
-        this.dans = this.dans.length === DANS.length ? [2] : [...DANS];
+        this.dans = this.dans.length === DANS.length ? [this.oneDan] : [...DANS];
       } else {
-        const d = Number(b.dataset.dan);
-        this.dans = this.dans.includes(d) ? this.dans.filter((x) => x !== d) : [...this.dans, d].sort((x, y) => x - y);
-        if (this.dans.length === 1) speak(`${d}단!`);
+        this.oneDan = Number(b.dataset.dan);
+        this.dans = [this.oneDan];
+        speak(`${this.oneDan}단!`);
       }
       save('gugudan.dans', this.dans);
       this.renderLobby();
@@ -174,7 +176,7 @@ class App {
     $('.game.stones .g-lv').textContent = LV_TEXT.stones[this.level];
     $('.game.moles .g-lv').textContent = LV_TEXT.moles[this.level];
     const many = this.dans.length > 1;
-    $('.game.stones .g-desc').textContent = many ? `${this.dans.join('·')}단 연못을 차례로` : `${this.dans[0] || 3}, ${(this.dans[0] || 3) * 2}, ${(this.dans[0] || 3) * 3}… 뛰어 세기`;
+    $('.game.stones .g-desc').textContent = many ? `${this.dans[0]}단부터 ${this.dans[this.dans.length - 1]}단까지 연못을 차례로` : `${this.dans[0] || 3}, ${(this.dans[0] || 3) * 2}, ${(this.dans[0] || 3) * 3}… 뛰어 세기`;
     $('.game.moles .g-desc').textContent = `${QUESTIONS}문제 · 정답 두더지를 뿅!`;
     document.querySelectorAll('.game').forEach((b) => { b.disabled = !this.dans.length; });
   }
@@ -211,7 +213,7 @@ class App {
         .filter((it) => dans.includes(it.a) && it.b >= 1 && it.b <= 9)
         .slice(0, 2)
         .map((it) => ({ a: it.a, b: it.b, review: true }));
-      const qs = shuffle(pickFacts(dans, QUESTIONS, due));
+      const qs = pickFacts(dans, QUESTIONS, due);
       this.game = new MolesGame(this, { dans, level: this.level, questions: qs });
     }
   }

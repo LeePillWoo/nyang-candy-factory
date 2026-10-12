@@ -573,7 +573,7 @@ export function drawHammer(ctx, px, py, angle, s = 1, gold = false) {
   ctx.restore();
 }
 
-// 문제 진행 점 (두더지 6문제)
+// 문제 진행 점 (두더지 한 판의 문제 수만큼)
 export function drawDots(ctx, cx, cy, results, cur, t) {
   const n = results.length, r = 15, gap = 12;
   const x0 = cx - (n * r * 2 + (n - 1) * gap) / 2 + r;

@@ -5,7 +5,6 @@ import { load, save } from '../save.js';
 export const DANS = [2, 3, 4, 5, 6, 7, 8, 9];
 export const STAR_STREAK = 3;   // 한 번에 3번 연속 맞히면 익힘 ⭐
 
-const rnd = (lo, hi) => lo + Math.floor(Math.random() * (hi - lo + 1));
 export const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 const pickN = (pool, n) => shuffle([...pool]).slice(0, n);
 
@@ -139,14 +138,18 @@ export function trickyFacts(max = 6) {
 export function getBest(key) { return data().best[key] ?? null; }
 export function setBest(key, value) { const d = data(); d.best[key] = value; save(KEY, d); }
 
-// 문제 순서 섞기 도우미 (두더지): 고른 단에서 n 문제, 바로 앞과 같은 문제는 피한다
+// 두더지 문제 고르기: 고른 단에서 n 문제 (first = 먼저 넣을 다시 도전 문제), 섞인 순서로 돌려준다.
+//   한 단은 9문제뿐이라 모자라는 만큼은 ×1 을 뺀 문제를 한 번 더 내고, 같은 문제가 연달아 나오지 않게 섞는다
 export function pickFacts(dans, n, first = []) {
-  const all = shuffle(factsOf(dans));
+  const same = (p, q) => p.a === q.a && p.b === q.b;
   const out = [...first];
-  for (const f of all) {
+  for (const f of shuffle(factsOf(dans))) {
     if (out.length >= n) break;
-    if (!out.some((q) => q.a === f.a && q.b === f.b)) out.push(f);
+    if (!out.some((q) => same(q, f))) out.push(f);
   }
-  while (out.length < n) out.push({ a: dans[rnd(0, dans.length - 1)], b: rnd(1, 9) });   // 단이 하나면 9문제뿐이라 넉넉
-  return out;
+  const extra = shuffle(factsOf(dans).filter((f) => f.b > 1));
+  for (let i = 0; out.length < n; i++) out.push(extra[i % extra.length]);
+  let order = shuffle([...out]);
+  for (let k = 0; k < 30 && order.some((q, i) => i > 0 && same(q, order[i - 1])); k++) order = shuffle([...out]);
+  return order;
 }

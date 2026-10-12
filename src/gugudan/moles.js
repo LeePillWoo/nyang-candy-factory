@@ -1,12 +1,12 @@
 // 🔨 두더지 잡기 — 위에 문제(6 × 7 = ?)가 나오면, 답을 든 두더지를 냥이가 뿅망치로 뿅!
-//   한 판 6문제. 시간 제한은 없고, 단계에 따라 두더지가 올라와 있는 시간 · 수만 달라진다.
+//   한 판 10문제. 시간 제한은 없고, 단계에 따라 두더지가 올라와 있는 시간 · 수만 달라진다.
 //   틀린 두더지는 "메롱~" 하고 들어간다(벌 없음). 두 번 틀리면 정답 두더지가 반짝.
 //   덤: 정답을 든 황금 두더지(코인 2배), 한 번에 3연속 → 황금 뿅망치(다음 한 방 코인 2배).
 import { sfx } from '../audio.js';
 import { confusions, chant, askWords, topic } from './facts.js';
 import * as D from './draw.js';
 
-export const QUESTIONS = 6;
+export const QUESTIONS = 10;
 const LV = {
   1: { holes: 6, up: 2, stay: 4.0 },
   2: { holes: 6, up: 3, stay: 2.9 },
