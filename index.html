@@ -95,6 +95,9 @@
       grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr));
       gap: clamp(18px, 4vw, 34px);
     }
+    /* 게임 4개: 태블릿 · 노트북은 2×2, 아주 넓은 화면은 한 줄 */
+    @media (min-width: 700px) { .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); width: min(1000px, 100%); } .missions ul { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+    @media (min-width: 1500px) { .cards { grid-template-columns: repeat(4, minmax(0, 1fr)); width: min(1480px, 100%); } .card h2 { font-size: 38px; } .missions ul { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
     .card {
       display: flex; flex-direction: column; align-items: center;
       text-decoration: none; color: var(--ink);
@@ -110,6 +113,8 @@
     .card.candy { background: linear-gradient(180deg, #ffc9d6, #ff9fb8); }
     .card.penguin { background: linear-gradient(180deg, #d4efff, #8fd0f7); }
     .card.kitchen { background: linear-gradient(180deg, #ffe7b3, #ffc46b); }
+    .card.gugudan { background: linear-gradient(180deg, #d9f6e6, #8fdcb4); }
+    .card.gugudan .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 64%, #a6e0ff 64%); }
     .art {
       width: 100%; max-width: 320px; aspect-ratio: 16 / 10;
       background: rgba(255, 255, 255, .6);
@@ -133,9 +138,14 @@
       width: 149px; height: 163px;   /* 고양이 시트 만세(3행 3번)를 0.9배 */
       background: url(assets/sprites/cat.png?v=9) -445.5px -325.8px / 891px 652px no-repeat;
     }
+    .wave-cat {
+      width: 149px; height: 163px;   /* 고양이 시트 손 흔들기(3행 1번)를 0.9배 */
+      background: url(assets/sprites/cat.png?v=9) -148.5px -325.8px / 891px 652px no-repeat;
+    }
+    .card.gugudan .char { animation-duration: 1.4s; }
     .card.penguin .char { animation-duration: 1s; }
     .card.kitchen .char { animation-duration: 1.2s; }
-    .candies, .dumplings { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
+    .candies, .dumplings, .pond-art { position: absolute; inset: auto 0 10px; text-align: center; font-size: 30px; letter-spacing: 4px; }
     .snow { position: absolute; inset: auto 0 10px; text-align: center; font-size: 26px; letter-spacing: 6px; }
     .card.penguin .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 60%, #ffffff 60%); }
     .card.kitchen .art { background: linear-gradient(180deg, rgba(255,255,255,.7) 62%, #f3d9ad 62%); }
@@ -195,6 +205,10 @@
     .missed small { color: #8a6f66; font-size: 16px; }
     .note { font-size: 17px; color: #8a6f66; }
     .danger { border: 4px solid var(--ink); border-radius: 999px; background: #fff; padding: 6px 18px; font-size: 18px; }
+    .gg-table { display: grid; grid-template-columns: 56px repeat(9, minmax(0, 1fr)); gap: 3px; font-size: 15px; }
+    .gg-table .rh { font-size: 17px; align-self: center; }
+    .gg-table i { font-style: normal; text-align: center; border-radius: 6px; padding: 3px 0; border: 2px solid rgba(74,52,52,.35); background: #fff; }
+    .gg-table i.try { background: #fff3b0; } .gg-table i.oops { background: #ffd1dc; } .gg-table i.star { background: #c8f0d8; }
 
     @keyframes bob { 50% { transform: translateY(-8px); } }
     @keyframes popin { from { transform: scale(.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
@@ -254,6 +268,16 @@
       <p>만두·꼬치·쿠키를 굽고 배달해요 (1인 · 2인)</p>
       <span class="play">시작!</span>
     </a>
+
+    <a class="card gugudan" href="gugudan.html">
+      <div class="art">
+        <div class="char" data-sheet="cat" data-anim="happy" data-frame="1" data-scale="0.9"><div class="wave-cat" role="img" aria-label="손 흔드는 고양이"></div><canvas class="hat-layer"></canvas></div>
+        <div class="pond-art">🐸 ✖️ 🔨</div>
+      </div>
+      <h2>냥냥 구구단</h2>
+      <p>징검다리 점프 · 두더지 잡기로 2~9단 익히기</p>
+      <span class="play">시작!</span>
+    </a>
   </main>
 
   <!-- 상점 -->
@@ -279,11 +303,14 @@
     <div class="sheet" role="dialog" aria-label="부모님 보기">
       <button class="close" aria-label="닫기">✕</button>
       <h2>👪 부모님 보기</h2>
-      <h3>최근 정답률 <span class="note">(종류별 최근 30문제, 세 게임 합쳐서)</span></h3>
+      <h3>최근 정답률 <span class="note">(종류별 최근 30문제, 모든 게임 합쳐서)</span></h3>
       <div class="acc" id="acc"></div>
       <h3>자주 틀린 문제</h3>
       <ol class="missed" id="missed"></ol>
       <p class="note" id="review-note"></p>
+      <h3>구구단 익힘표 <span class="note">(한 번에 3번 연속 맞히면 ⭐)</span></h3>
+      <div class="gg-table" id="gg-table"></div>
+      <p class="note" id="gg-note"></p>
       <h3>오늘의 미션</h3>
       <p class="note" id="mission-note"></p>
       <p class="note">기록은 이 기기(브라우저)에만 저장돼요. 인터넷 기록을 지우거나 다른 브라우저로 열면 따로 시작해요.</p>
@@ -295,15 +322,16 @@
   <script type="importmap">
   {
     "imports": {
-      "./src/audio.js": "./src/audio.js?v=22",
-      "./src/sprites.js": "./src/sprites.js?v=22",
-      "./src/save.js": "./src/save.js?v=22",
-      "./src/learn.js": "./src/learn.js?v=22",
-      "./src/missions.js": "./src/missions.js?v=22",
-      "./src/shop.js": "./src/shop.js?v=22"
+      "./src/audio.js": "./src/audio.js?v=23",
+      "./src/sprites.js": "./src/sprites.js?v=23",
+      "./src/save.js": "./src/save.js?v=23",
+      "./src/learn.js": "./src/learn.js?v=23",
+      "./src/missions.js": "./src/missions.js?v=23",
+      "./src/gugudan/facts.js": "./src/gugudan/facts.js?v=23",
+      "./src/shop.js": "./src/shop.js?v=23"
     }
   }
   </script>
-  <script type="module" src="src/home.js?v=22"></script>
+  <script type="module" src="src/home.js?v=23"></script>
 </body>
 </html>

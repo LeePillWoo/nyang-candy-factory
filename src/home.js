@@ -5,6 +5,7 @@ import { getCoins } from './save.js';
 import { todayMissions, REWARD, BONUS } from './missions.js';
 import { ITEMS, itemOf, shopState, buy, setEquipped, isEquipped, drawHat, drawItemIcon, drawWall, drawDeco } from './shop.js';
 import { report, resetLearning } from './learn.js';
+import { masteryTable, trickyFacts } from './gugudan/facts.js';
 
 const $ = (s) => document.querySelector(s);
 const MODE_NAME = { add: '덧셈', sub: '뺄셈', mul: '곱셈', div: '나눗셈', ten: '10 만들기' };
@@ -30,7 +31,7 @@ function renderMissions() {
   $('#stamps').textContent = `🏅 도장 ${m.stamps}개`;
   $('#mission-foot').innerHTML = m.allDone
     ? '오늘의 미션 모두 성공! 🎉 <b>내일 또 새 미션이 와요</b>'
-    : `하나에 <b>+${REWARD}</b>코인 · 셋 다 하면 <b>+${BONUS}</b>코인과 도장 하나!`;
+    : `하나에 <b>+${REWARD}</b>코인 · 모두 하면 <b>+${BONUS}</b>코인과 도장 하나!`;
 }
 
 // ── 카드 속 캐릭터 머리 위에 상점 모자 ─────────────────────────
@@ -200,7 +201,14 @@ function renderParent() {
     : '<li>아직 틀린 문제가 없어요 👍</li>';
   $('#review-note').textContent = `다시 도전을 기다리는 문제 ${r.waiting}개 · 다시 맞혀서 익힌 문제 ${r.mastered}개 · 지금까지 ${r.sessions}판 했어요. 틀린 문제는 다음 판부터 가끔 다시 나와요.`;
   const m = todayMissions();
-  $('#mission-note').textContent = `오늘 ${m.list.filter((x) => x.done).length}/3 완료 · 지금까지 모은 도장 ${m.stamps}개`;
+  $('#mission-note').textContent = `오늘 ${m.list.filter((x) => x.done).length}/${m.list.length} 완료 · 지금까지 모은 도장 ${m.stamps}개`;
+  // 구구단 익힘표 (2~9단 × 1~9)
+  const gg = masteryTable();
+  $('#gg-table').innerHTML = gg.map((r) => `<span class="rh">${r.a}단 ${r.stars >= 9 ? '🏅' : ''}</span>`
+    + r.row.map((c) => `<i class="${c.state}" title="${r.a} × ${c.b}">${r.a * c.b}</i>`).join('')).join('');
+  const tricky = trickyFacts(5);
+  const starN = gg.reduce((s, r) => s + r.stars, 0);
+  $('#gg-note').textContent = `익힌 구구단 ${starN}/72` + (tricky.length ? ` · 자주 틀리는 구구단: ${tricky.map((f) => `${f.a}×${f.b}=${f.a * f.b}`).join(', ')}` : '');
 }
 $('#open-parent').addEventListener('click', () => { sfx.tap(); openModal('#parent'); renderParent(); });
 $('#reset-learn').addEventListener('click', () => {

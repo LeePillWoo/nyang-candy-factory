@@ -1,6 +1,6 @@
-// 오늘의 미션 — 하루에 3개(게임마다 하나). 날짜로 고르기 때문에 그날은 늘 같은 미션.
+// 오늘의 미션 — 하루에 게임마다 하나(지금 4개). 날짜로 고르기 때문에 그날은 늘 같은 미션.
 //   게임은 일이 생길 때 track('kitchen.smart') 처럼 알려 주기만 하면 된다.
-//   미션 하나 +10코인, 셋 다 하면 +20코인과 도장 하나.
+//   미션 하나 +10코인, 모두 하면 +20코인과 도장 하나.
 import { load, save, addCoins, today } from './save.js';
 
 const KEY = 'nyang.missions';
@@ -25,6 +25,12 @@ const CATALOG = {
     { id: 'kitchen.change', icon: '🥟', text: '거스름돈 2번 맞히기', goal: 2 },
     { id: 'kitchen.party', icon: '🥟', text: '단체 손님 대접하기', goal: 1 },
   ],
+  gugudan: [
+    { id: 'gugudan.pond', icon: '🐸', text: '징검다리 연못 하나 건너기', goal: 1 },
+    { id: 'gugudan.nosplash', icon: '🐸', text: '퐁당 없이 연못 건너기', goal: 1 },
+    { id: 'gugudan.mole', icon: '🔨', text: '두더지 6마리 잡기', goal: 6 },
+    { id: 'gugudan.first', icon: '✖️', text: '구구단 한 번에 맞히기 8번', goal: 8 },
+  ],
 };
 const ALL = Object.values(CATALOG).flat();
 const def = (id) => ALL.find((m) => m.id === id);
@@ -39,14 +45,16 @@ function hash(s) {
 function state() {
   const date = today();
   let st = load(KEY, null);
+  const h = hash(date);
+  const pick = (g, i) => { const c = CATALOG[g]; return { id: c[(h >>> (i * 5)) % c.length].id, progress: 0 }; };
   if (!st || st.date !== date) {
-    const h = hash(date);
-    const list = Object.keys(CATALOG).map((g, i) => {
-      const c = CATALOG[g];
-      return { id: c[(h >>> (i * 5)) % c.length].id, progress: 0 };
-    });
-    st = { date, list, bonus: false, stamps: st ? st.stamps || 0 : 0 };
+    st = { date, list: Object.keys(CATALOG).map(pick), bonus: false, stamps: st ? st.stamps || 0 : 0 };
     save(KEY, st);
+  } else {
+    // 게임이 새로 생긴 날: 이미 정해진 오늘 미션에 새 게임 몫을 보탠다
+    const have = new Set(st.list.map((x) => x.id.split('.')[0]));
+    const add = Object.keys(CATALOG).map((g, i) => (have.has(g) ? null : pick(g, i))).filter(Boolean);
+    if (add.length) { st.list.push(...add); save(KEY, st); }
   }
   return st;
 }
