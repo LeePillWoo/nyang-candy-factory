@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="theme-color" content="#dff3ff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>냥냥 구구단</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Jua&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css?v=23">
+  <link rel="stylesheet" href="gugudan.css?v=23">
+</head>
+<body class="gugudan">
+  <div id="stage">
+    <!-- 연못 · 마당 장면 (누르기: 징검돌 · 두더지) -->
+    <canvas id="scene"></canvas>
+
+    <!-- 상단 HUD -->
+    <div id="hud">
+      <a id="btn-games" class="chip" href="./" aria-label="게임 고르기 (처음 화면)">🏠</a>
+      <button id="btn-home" class="chip" aria-label="뒤로 (구구단 로비)" hidden>🔙</button>
+      <button id="btn-sound" class="chip" aria-label="소리">🔊</button>
+      <div id="coins" class="chip coins"><span class="coin"></span><b id="coin-count">0</b></div>
+    </div>
+
+    <div id="banner" hidden></div>
+
+    <!-- 로비: 단 고르기 → 단계 → 게임 -->
+    <section id="lobby" class="screen">
+      <div class="panel">
+        <h1 class="title"><span>냥냥</span> 구구단</h1>
+        <p class="sub">몇 단을 연습할까요? <small>여러 개 골라도 돼요</small></p>
+        <div class="dans" role="group" aria-label="단 고르기"></div>
+        <div class="lv-row" role="radiogroup" aria-label="단계">
+          <button class="lv" data-level="1" aria-checked="false">🐣 쉬움</button>
+          <button class="lv" data-level="2" aria-checked="false">🐥 보통</button>
+          <button class="lv" data-level="3" aria-checked="false">🦅 어려움</button>
+        </div>
+        <div class="games">
+          <button class="btn game stones" data-game="stones">
+            <span class="g-icon">🐸</span><b>징검다리 점프</b><small class="g-desc">3, 6, 9… 뛰어 세기</small><small class="g-lv"></small>
+          </button>
+          <button class="btn game moles" data-game="moles">
+            <span class="g-icon">🔨</span><b>두더지 잡기</b><small class="g-desc">6문제 · 정답 두더지를 뿅!</small><small class="g-lv"></small>
+          </button>
+        </div>
+        <button class="pill book-btn" id="open-book">📒 익힘판 보기</button>
+      </div>
+    </section>
+
+    <!-- 익힘판: 2~9단 × 1~9 -->
+    <section id="book" class="screen" hidden>
+      <div class="panel">
+        <button class="close" aria-label="닫기">✕</button>
+        <h2 class="title small">📒 익힘판</h2>
+        <p class="note">한 번에 3번 연속 맞히면 ⭐ · 칸을 누르면 구구단을 읽어 줘요</p>
+        <div class="table"></div>
+        <p class="legend"><i class="s-new"></i>아직 <i class="s-try"></i>익히는 중 <i class="s-oops"></i>다시 해 봐요 <i class="s-star"></i>익힘 ⭐</p>
+      </div>
+    </section>
+
+    <!-- 결과 -->
+    <section id="result" class="screen" hidden>
+      <div class="panel">
+        <h2 class="title small r-title"></h2>
+        <div class="stars"></div>
+        <p class="r-line r-main"></p>
+        <p class="r-line r-seq"></p>
+        <div class="missed"></div>
+        <p class="r-line r-book"></p>
+        <p class="earned"></p>
+        <button class="btn go next-pond" hidden></button>
+        <div class="row">
+          <button class="btn go again">한 번 더!</button>
+          <button class="btn go other">다른 게임</button>
+          <button class="btn go home">로비로</button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- 배포할 때 v 값을 올리면 모든 파일이 한꺼번에 새로 받아진다 -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./src/audio.js": "./src/audio.js?v=23",
+      "./src/viewport.js": "./src/viewport.js?v=23",
+      "./src/sprites.js": "./src/sprites.js?v=23",
+      "./src/save.js": "./src/save.js?v=23",
+      "./src/learn.js": "./src/learn.js?v=23",
+      "./src/missions.js": "./src/missions.js?v=23",
+      "./src/shop.js": "./src/shop.js?v=23",
+      "./src/gugudan/facts.js": "./src/gugudan/facts.js?v=23",
+      "./src/gugudan/draw.js": "./src/gugudan/draw.js?v=23",
+      "./src/gugudan/stones.js": "./src/gugudan/stones.js?v=23",
+      "./src/gugudan/moles.js": "./src/gugudan/moles.js?v=23"
+    }
+  }
+  </script>
+  <script type="module" src="src/gugudan/main.js?v=23"></script>
+</body>
+</html>

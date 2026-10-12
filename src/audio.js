@@ -49,8 +49,40 @@ function tone(freq, start, dur, { type = 'sine', vol = 0.4, slide = 0 } = {}) {
   o.stop(t0 + dur + 0.02);
 }
 
+// 쏴아 하는 소리 (물보라) — 하얀 잡음을 필터로 다듬는다
+function noise(start, dur, { vol = 0.3, freq = 900, q = 0.8, sweep = 0 } = {}) {
+  if (!ctx || muted) return;
+  const t0 = ctx.currentTime + start;
+  const len = Math.max(1, Math.floor(ctx.sampleRate * dur));
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const ch = buf.getChannelData(0);
+  for (let i = 0; i < len; i++) ch[i] = Math.random() * 2 - 1;
+  const src = ctx.createBufferSource();
+  src.buffer = buf;
+  const f = ctx.createBiquadFilter();
+  f.type = 'bandpass';
+  f.frequency.setValueAtTime(freq, t0);
+  if (sweep) f.frequency.exponentialRampToValueAtTime(Math.max(60, freq + sweep), t0 + dur);
+  f.Q.value = q;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t0);
+  g.gain.exponentialRampToValueAtTime(vol, t0 + 0.02);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(f).connect(g).connect(master);
+  src.start(t0);
+  src.stop(t0 + dur + 0.02);
+}
+
 export const sfx = {
   tap()     { tone(660, 0, 0.08, { type: 'triangle', vol: 0.25 }); },
+  // 구구단: 폴짝 · 퐁당 · 뿅망치
+  jump()    { tone(260, 0, 0.18, { type: 'sine', vol: 0.3, slide: 520 }); },
+  land()    { tone(180, 0, 0.09, { type: 'triangle', vol: 0.25, slide: -60 }); },
+  splash()  { tone(520, 0, 0.12, { type: 'sine', vol: 0.35, slide: -380 }); noise(0.04, 0.55, { vol: 0.35, freq: 1400, sweep: -900 }); },
+  swoosh()  { noise(0, 0.14, { vol: 0.18, freq: 2200, q: 1.4, sweep: -1200 }); },
+  bonk()    { tone(1320, 0, 0.07, { type: 'square', vol: 0.14, slide: 600 }); tone(1760, 0.06, 0.1, { type: 'square', vol: 0.12, slide: -500 }); },
+  giggle()  { [700, 820, 700, 820].forEach((f, i) => tone(f, i * 0.07, 0.07, { type: 'triangle', vol: 0.18 })); },
+  pip()     { tone(520, 0, 0.09, { type: 'sine', vol: 0.22, slide: 240 }); },
   // 사탕 '뽁' — n 번째일수록 살짝 높아짐
   pop(n = 0) { tone(520 + n * 45, 0, 0.12, { type: 'sine', vol: 0.45, slide: 380 }); },
   machine() {
